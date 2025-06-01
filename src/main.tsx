@@ -2,6 +2,8 @@ import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { Table } from './components/table.tsx'
+import { Nlp } from './components/nlp.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -10,15 +12,54 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-type TableLine = {
+export type TableLine = {
   Z: number
   Xs: number[]
   XFs: number[]
   B: number
 }
 
+export type Table = {
+  tableRows: TableLine[]
+  pivotColNumber: number
+  pivotRowNumber: number
+  pivotElement: number
+}
+
+export type Nlp = {
+  pivotRow: TableLine
+  newPivotRow: TableLine
+  pivotElementToUse: number
+}
+
+export type OtherLine = {
+  newPivotRow: TableLine
+  multipliedNewPivotRow: TableLine
+  originalRow: TableLine
+}
+
+export enum HistoryType {
+  Table = 0,
+  Nlp = 1,
+  OtherLine = 2,
+}
+
+export type History =
+  | {
+      state: Table
+      type: HistoryType.Table
+    }
+  | {
+      state: Nlp
+      type: HistoryType.Nlp
+    }
+  | {
+      state: OtherLine
+      type: HistoryType.OtherLine
+    }
+
 export function NewSimplex() {
-  const [tableData, setTableData] = useState<TableLine[]>([])
+  const [history, setHistory] = useState<History[]>([])
   const [objective, setObjective] = useState('5x1 + 2x2')
   const [restrictions, setRestrictions] = useState<string[]>([
     '10x1 + 12x2 <= 60',
@@ -79,7 +120,7 @@ export function NewSimplex() {
     let B = 0
 
     for (const part of parts) {
-      if (part === '<=') {
+      if (part === '<=' || part === '+') {
         // result.push(part)
         continue
       }
@@ -87,7 +128,7 @@ export function NewSimplex() {
       const xIndex = part.indexOf('x')
 
       if (xIndex === -1) {
-        B = Number(B)
+        B = Number(part)
         continue
       }
 
@@ -127,7 +168,110 @@ export function NewSimplex() {
       })
     })
 
-    setTableData([objectiveLine, ...restrictionsLines])
+    const tableRows = [objectiveLine, ...restrictionsLines]
+
+    const pivotColNumber = calculatePivotCol(objectiveLine)
+
+    const pivotRowNumber = calculatePivotRow(tableRows, pivotColNumber)
+
+    const pivotElement = calculatePivotElement(
+      tableRows,
+      pivotColNumber,
+      pivotRowNumber,
+    )
+
+    const firstTableData = {
+      pivotColNumber,
+      pivotRowNumber,
+      pivotElement,
+      tableRows,
+    }
+
+    const history: History[] = []
+
+    history.push({ state: firstTableData, type: HistoryType.Table })
+
+    // setHistory(prev => [
+    //   ...prev,
+    //   { state: firstTableData, type: HistoryType.Table },
+    // ])
+
+    while (true) {
+      const nlp = calculateNlp(tableRows[pivotRowNumber], pivotElement)
+
+      history.push({ state: nlp, type: HistoryType.Nlp })
+
+      break
+    }
+
+    setHistory(history)
+  }
+
+  const calculatePivotCol = (firstLine: TableLine) => {
+    let max = 0
+    let index = 0
+
+    firstLine.Xs.forEach((x, i) => {
+      if (max < Math.abs(x)) {
+        max = Math.abs(x)
+        index = i + 1
+      }
+    })
+
+    return index
+  }
+
+  const calculatePivotRow = (
+    tableRows: TableLine[],
+    pivotColNumber: number,
+  ) => {
+    let min = Number.MAX_SAFE_INTEGER
+    let index = 0
+
+    tableRows.forEach((row, rowIndex) => {
+      if (rowIndex === 0) {
+        return
+      }
+
+      const co = row.Xs?.[pivotColNumber - 1]
+
+      const value = row.B / co
+
+      if (min > value) {
+        min = value
+        index = rowIndex
+      }
+    })
+
+    return index
+  }
+
+  const calculatePivotElement = (
+    tableRows: TableLine[],
+    pivotColNumber: number,
+    pivotRowNumber: number,
+  ) => {
+    const Table2D = tableRows.map(r => [r.Z, ...r.Xs, ...r.XFs, r.B])
+
+    return Table2D[pivotRowNumber][pivotColNumber]
+  }
+
+  const calculateNlp = (
+    pivotTableLine: TableLine,
+    pivotElement: number,
+  ): Nlp => {
+    const newPivotRow = {
+      Z: pivotTableLine.Z / pivotElement,
+      Xs: pivotTableLine.Xs.map(x => x / pivotElement),
+      XFs: pivotTableLine.Xs.map(x => x / pivotElement),
+      B: pivotTableLine.B / pivotElement,
+    }
+
+    return {
+      newPivotRow,
+      pivotRow: pivotTableLine,
+      pivotElementToUse: pivotElement,
+    }
   }
 
   return (
@@ -186,67 +330,29 @@ export function NewSimplex() {
         Gerar tabela
       </button>
 
-      {tableData.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-zinc-400 rounded-lg mt-4">
-            <thead>
-              <tr>
-                <th className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100">
-                  Z
-                </th>
-                {tableData?.[0].Xs.map((_, i) => (
-                  <th
-                    key={i.toString()}
-                    className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100"
-                  >
-                    X{i + 1}
-                  </th>
-                ))}
-                {tableData?.[0].XFs.map((_, i) => (
-                  <th
-                    key={i.toString()}
-                    className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100"
-                  >
-                    XF{i + 1}
-                  </th>
-                ))}
-                <th className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100">
-                  B
-                </th>
-              </tr>
-            </thead>
+      {history.map(({ state, type }) => {
+        switch (type) {
+          case HistoryType.Table:
+            return (
+              <div className='flex flex-col'>
+                <h2>Table</h2>
+                <Table data={state} />
+              </div>
+            )
+          case HistoryType.Nlp:
+            return (
+              <div className='flex flex-col'>
+                <h2>NLP</h2>
+                <Nlp data={state} />
+              </div>
+            )
+          case HistoryType.OtherLine:
+            return <div>Outra linha</div>
 
-            <tbody>
-              {tableData.map((line, lineIndex) => (
-                <tr key={lineIndex.toString()}>
-                  <td className="px-3 py-2 border border-zinc-300 text-center">
-                    {line.Z}
-                  </td>
-                  {line.Xs.map((x, i) => (
-                    <td
-                      key={i.toString()}
-                      className="px-3 py-2 border border-zinc-300 text-center"
-                    >
-                      {x}
-                    </td>
-                  ))}
-                  {line.XFs.map((xf, i) => (
-                    <td
-                      key={i.toString()}
-                      className="px-3 py-2 border border-zinc-300 text-center"
-                    >
-                      {xf}
-                    </td>
-                  ))}
-                  <td className="px-3 py-2 border border-zinc-300 text-center">
-                    {line.B}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+          default:
+            break
+        }
+      })}
     </main>
   )
 }
