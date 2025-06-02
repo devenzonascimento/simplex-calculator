@@ -1,4 +1,4 @@
-import type { Nlp as NlpType } from '../main'
+import type { NlpType as NlpType } from '../main'
 
 type NlpProps = {
   data: NlpType

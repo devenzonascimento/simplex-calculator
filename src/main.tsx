@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { Table } from './components/table.tsx'
 import { Nlp } from './components/nlp.tsx'
+import { OtherLine } from './components/other-line.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -19,24 +20,27 @@ export type TableLine = {
   B: number
 }
 
-export type Table = {
+export type TableType = {
   tableRows: TableLine[]
   pivotColNumber: number
   pivotRowNumber: number
   pivotElement: number
 }
 
-export type Nlp = {
+export type NlpType = {
+  rowNumber: number
   pivotRow: TableLine
   newPivotRow: TableLine
   pivotElementToUse: number
 }
 
-export type OtherLine = {
+export type OtherLineType = {
+  rowNumber: number
   newPivotRow: TableLine
   multipliedNewPivotRow: TableLine
   originalRow: TableLine
   resultRow: TableLine
+  coefficient: number
 }
 
 export enum HistoryType {
@@ -47,15 +51,15 @@ export enum HistoryType {
 
 export type History =
   | {
-      state: Table
+      state: TableType
       type: HistoryType.Table
     }
   | {
-      state: Nlp
+      state: NlpType
       type: HistoryType.Nlp
     }
   | {
-      state: OtherLine
+      state: OtherLineType
       type: HistoryType.OtherLine
     }
 
@@ -198,12 +202,48 @@ export function NewSimplex() {
     // ])
 
     while (true) {
-      const nlp = calculateNlp(tableRows[pivotRowNumber], pivotElement)
+      const nlp = calculateNlp(
+        tableRows[pivotRowNumber],
+        pivotElement,
+        pivotRowNumber,
+      )
 
       history.push({ state: nlp, type: HistoryType.Nlp })
 
       const otherLines = calculateOthersLine(nlp.newPivotRow, firstTableData)
-      // TODO: Terminar de calcular as outras linhas, jogar elas no historico e identificar elas para não repetir e depois montar a nova tabela e assim segue em loop infinito
+
+      // biome-ignore lint/complexity/noForEach: <explanation>
+      otherLines.forEach(otherLine => {
+        history.push({ state: otherLine, type: HistoryType.OtherLine })
+      })
+
+      const tableRowsX = [
+        { index: nlp.rowNumber, newLine: nlp.newPivotRow },
+        ...otherLines.map(o => ({ index: o.rowNumber, newLine: o.resultRow })),
+      ]
+
+      const tableRowsSorted = tableRowsX
+        .sort((a, b) => a.index - b.index)
+        .map(t => t.newLine)
+
+      const pivotColNumberX = calculatePivotCol(objectiveLine)
+
+      const pivotRowNumberX = calculatePivotRow(tableRows, pivotColNumber)
+
+      const pivotElementX = calculatePivotElement(
+        tableRows,
+        pivotColNumber,
+        pivotRowNumber,
+      )
+
+      const secondTableData = {
+        pivotColNumber: pivotColNumberX,
+        pivotRowNumber: pivotRowNumberX,
+        pivotElement: pivotElementX,
+        tableRows: tableRowsSorted,
+      }
+
+      history.push({ state: secondTableData, type: HistoryType.Table })
       break
     }
 
@@ -212,9 +252,9 @@ export function NewSimplex() {
 
   const calculateOthersLine = (
     newPivotRow: TableLine,
-    tableData: Table,
-  ): OtherLine[] => {
-    const result: OtherLine[] = []
+    tableData: TableType,
+  ): OtherLineType[] => {
+    const result: OtherLineType[] = []
 
     tableData.tableRows.forEach((row, rowIndex) => {
       // Se for a NLP retorna
@@ -238,12 +278,19 @@ export function NewSimplex() {
         B: multipliedNewPivotRow.B + row.B,
       }
 
-      const otherLine: OtherLine = {
+      const otherLine: OtherLineType = {
+        rowNumber: rowIndex,
         newPivotRow,
         multipliedNewPivotRow,
         originalRow: row,
         resultRow,
+        coefficient: co,
       }
+
+      // TODO: Verificar mais algumas regras de simplex para ter certeza sobre o calculo.
+      // TODO: Criar um novo tipo chamado tabela final
+      // TODO: Criar apresentação de solução com prova real
+      // TODO: Componentizar e implementar o loop de soluções.
 
       result.push(otherLine)
     })
@@ -303,7 +350,8 @@ export function NewSimplex() {
   const calculateNlp = (
     pivotTableLine: TableLine,
     pivotElement: number,
-  ): Nlp => {
+    pivotRowNumber: number,
+  ): NlpType => {
     const newPivotRow = {
       Z: pivotTableLine.Z / pivotElement,
       Xs: pivotTableLine.Xs.map(x => x / pivotElement),
@@ -312,6 +360,7 @@ export function NewSimplex() {
     }
 
     return {
+      rowNumber: pivotRowNumber,
       newPivotRow,
       pivotRow: pivotTableLine,
       pivotElementToUse: pivotElement,
@@ -386,13 +435,17 @@ export function NewSimplex() {
           case HistoryType.Nlp:
             return (
               <div className="flex flex-col">
-                <h2>NLP</h2>
+                <h2><strong>(NLP)</strong> Nova linha {state.rowNumber + 1}ª</h2>
                 <Nlp data={state} />
               </div>
             )
           case HistoryType.OtherLine:
-            return <div>Outra linha</div>
-
+            return (
+              <div className="flex flex-col">
+                <h2>Nova linha {state.rowNumber + 1}ª</h2>
+                <OtherLine data={state} />
+              </div>
+            )
           default:
             break
         }
