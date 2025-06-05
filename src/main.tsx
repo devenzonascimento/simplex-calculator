@@ -4,7 +4,11 @@ import './index.css'
 import App from './App.tsx'
 import { Table } from './components/table.tsx'
 import { Nlp } from './components/nlp.tsx'
+import { OtherLine } from './components/other-line.tsx'
+import { FinalTable } from './components/final-table.tsx'
+import { Solution } from './components/solution.tsx'
 
+// biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* <App /> */}
@@ -19,52 +23,77 @@ export type TableLine = {
   B: number
 }
 
-export type Table = {
+export type TableType = {
   tableRows: TableLine[]
   pivotColNumber: number
   pivotRowNumber: number
   pivotElement: number
 }
 
-export type Nlp = {
+export type NlpType = {
+  rowNumber: number
   pivotRow: TableLine
   newPivotRow: TableLine
   pivotElementToUse: number
 }
 
-export type OtherLine = {
+export type OtherLineType = {
+  rowNumber: number
   newPivotRow: TableLine
   multipliedNewPivotRow: TableLine
   originalRow: TableLine
   resultRow: TableLine
+  coefficient: number
 }
+
+export type FinalTableType = {
+  headers: string[]
+  table: number[][]
+}
+
+export type SolutionType = Record<string, number>
 
 export enum HistoryType {
   Table = 0,
   Nlp = 1,
   OtherLine = 2,
+  FinalTable = 3,
+  Solution = 4,
 }
 
 export type History =
   | {
-      state: Table
+      state: TableType
       type: HistoryType.Table
     }
   | {
-      state: Nlp
+      state: NlpType
       type: HistoryType.Nlp
     }
   | {
-      state: OtherLine
+      state: OtherLineType
       type: HistoryType.OtherLine
+    }
+  | {
+      state: FinalTableType
+      type: HistoryType.FinalTable
+    }
+  | {
+      state: SolutionType
+      type: HistoryType.Solution
     }
 
 export function NewSimplex() {
   const [history, setHistory] = useState<History[]>([])
-  const [objective, setObjective] = useState('5x1 + 2x2')
+  // const [objective, setObjective] = useState('5x1 + 2x2')
+  // const [restrictions, setRestrictions] = useState<string[]>([
+  //   '10x1 + 12x2 <= 60',
+  //   '2x1 + x2 <= 6',
+  // ])
+  const [objective, setObjective] = useState('10x1 + 12x2')
   const [restrictions, setRestrictions] = useState<string[]>([
-    '10x1 + 12x2 <= 60',
-    '2x1 + x2 <= 6',
+    'x1 + x2 <= 100',
+    'x1 + 3x2 <= 270',
   ])
 
   const handleRestrictionChange = (index: number, restriction: string) => {
@@ -169,28 +198,21 @@ export function NewSimplex() {
       })
     })
 
-    const tableRows = [objectiveLine, ...restrictionsLines]
+    const firstTableRows = [objectiveLine, ...restrictionsLines]
 
-    const pivotColNumber = calculatePivotCol(objectiveLine)
+    const firstTableData = generateTableAndPivots(firstTableRows)
 
-    const pivotRowNumber = calculatePivotRow(tableRows, pivotColNumber)
-
-    const pivotElement = calculatePivotElement(
-      tableRows,
-      pivotColNumber,
-      pivotRowNumber,
-    )
-
-    const firstTableData = {
-      pivotColNumber,
-      pivotRowNumber,
-      pivotElement,
-      tableRows,
+    if (!firstTableData) {
+      alert('deu ruim')
+      return
     }
 
     const history: History[] = []
 
     history.push({ state: firstTableData, type: HistoryType.Table })
+
+    let tableData: TableType | null = firstTableData
+    // let tableRows: TableLine[] = []
 
     // setHistory(prev => [
     //   ...prev,
@@ -198,23 +220,140 @@ export function NewSimplex() {
     // ])
 
     while (true) {
-      const nlp = calculateNlp(tableRows[pivotRowNumber], pivotElement)
+      const nlp = calculateNlp(
+        tableData.tableRows[tableData.pivotRowNumber],
+        tableData.pivotElement,
+        tableData.pivotRowNumber,
+      )
 
       history.push({ state: nlp, type: HistoryType.Nlp })
 
-      const otherLines = calculateOthersLine(nlp.newPivotRow, firstTableData)
-      // TODO: Terminar de calcular as outras linhas, jogar elas no historico e identificar elas para não repetir e depois montar a nova tabela e assim segue em loop infinito
-      break
+      const otherLines = calculateOthersLine(nlp.newPivotRow, tableData)
+
+      // biome-ignore lint/complexity/noForEach: <explanation>
+      otherLines.forEach(otherLine => {
+        history.push({ state: otherLine, type: HistoryType.OtherLine })
+      })
+
+      const tempTableRows = [
+        { index: nlp.rowNumber, newLine: nlp.newPivotRow },
+        ...otherLines.map(o => ({ index: o.rowNumber, newLine: o.resultRow })),
+      ]
+
+      const tableRowsSorted = tempTableRows
+        .sort((a, b) => a.index - b.index)
+        .map(t => t.newLine)
+
+      const result = finalizeSimplex(tableRowsSorted)
+
+      if (result) {
+        history.push({
+          state: {
+            headers: [
+              'Z',
+              ...tableRowsSorted[0].Xs.map((_, i) => `X${i + 1}`),
+              ...tableRowsSorted[0].XFs.map((_, i) => `XF${i + 1}`),
+              'B',
+            ],
+            table: tableRowsSorted.map(r => [r.Z, ...r.Xs, ...r.XFs, r.B]),
+          },
+          type: HistoryType.FinalTable,
+        })
+        history.push({ state: result, type: HistoryType.Solution })
+        break
+      }
+
+      tableData = generateTableAndPivots(tableRowsSorted)
+
+      if (!tableData) {
+        alert('deu ruim')
+        return
+      }
+
+      history.push({ state: tableData, type: HistoryType.Table })
     }
 
     setHistory(history)
   }
 
+  const finalizeSimplex = (tableRows: TableLine[]) => {
+    const objectiveLine = tableRows[0]
+
+    if (
+      objectiveLine.Z >= 0 &&
+      objectiveLine.Xs.every(x => x >= 0) &&
+      objectiveLine.XFs.every(xf => xf >= 0) &&
+      objectiveLine.B >= 0
+    ) {
+      const map: Record<string, number[]> = {}
+
+      for (const row of tableRows) {
+        row.Xs.forEach((x, index) => {
+          const key = `X${index + 1}`
+
+          if (!map[key]) {
+            map[key] = []
+          }
+
+          map[key].push(x)
+        })
+
+        row.XFs.forEach((xf, index) => {
+          const key = `XF${index + 1}`
+
+          if (!map[key]) {
+            map[key] = []
+          }
+
+          map[key].push(xf)
+        })
+      }
+
+      const variables: Record<string, number> = {}
+
+      for (const key in map) {
+        const value = map[key]
+
+        variables[key] =
+          value.reduce((acc, v) => acc + v) === 1
+            ? tableRows[value.indexOf(1)].B
+            : 0
+      }
+      return {
+        maxLucro: objectiveLine.B,
+        ...variables,
+      }
+    }
+  }
+
+  const generateTableAndPivots = (tableRows: TableLine[]): TableType | null => {
+    const pivotColNumber = calculatePivotCol(tableRows[0])
+
+    if (!pivotColNumber) return null
+
+    const pivotRowNumber = calculatePivotRow(tableRows, pivotColNumber)
+
+    if (!pivotRowNumber) return null
+
+    const pivotElement = calculatePivotElement(
+      tableRows,
+      pivotColNumber,
+      pivotRowNumber,
+    )
+
+    return {
+      pivotColNumber,
+      pivotRowNumber,
+      pivotElement,
+      tableRows,
+    }
+  }
+
   const calculateOthersLine = (
     newPivotRow: TableLine,
-    tableData: Table,
-  ): OtherLine[] => {
-    const result: OtherLine[] = []
+    tableData: TableType,
+  ): OtherLineType[] => {
+    const result: OtherLineType[] = []
 
     tableData.tableRows.forEach((row, rowIndex) => {
       // Se for a NLP retorna
@@ -238,12 +377,19 @@ export function NewSimplex() {
         B: multipliedNewPivotRow.B + row.B,
       }
 
-      const otherLine: OtherLine = {
+      const otherLine: OtherLineType = {
+        rowNumber: rowIndex,
         newPivotRow,
         multipliedNewPivotRow,
         originalRow: row,
         resultRow,
+        coefficient: co,
       }
+
+      // TODO: Verificar mais algumas regras de simplex para ter certeza sobre o calculo.
+      // TODO: Criar um novo tipo chamado tabela final
+      // TODO: Criar apresentação de solução com prova real
+      // TODO: Componentizar e implementar o loop de soluções.
 
       result.push(otherLine)
     })
@@ -254,15 +400,17 @@ export function NewSimplex() {
   const calculatePivotCol = (firstLine: TableLine) => {
     let max = 0
     let index = 0
+    let assign = false
 
     firstLine.Xs.forEach((x, i) => {
       if (max < Math.abs(x)) {
         max = Math.abs(x)
+        assign = true
         index = i + 1
       }
     })
 
-    return index
+    return assign ? index : null
   }
 
   const calculatePivotRow = (
@@ -271,6 +419,7 @@ export function NewSimplex() {
   ) => {
     let min = Number.MAX_SAFE_INTEGER
     let index = 0
+    let assign = false
 
     tableRows.forEach((row, rowIndex) => {
       if (rowIndex === 0) {
@@ -283,11 +432,12 @@ export function NewSimplex() {
 
       if (min > value) {
         min = value
+        assign = true
         index = rowIndex
       }
     })
 
-    return index
+    return assign ? index : null
   }
 
   const calculatePivotElement = (
@@ -303,7 +453,8 @@ export function NewSimplex() {
   const calculateNlp = (
     pivotTableLine: TableLine,
     pivotElement: number,
-  ): Nlp => {
+    pivotRowNumber: number,
+  ): NlpType => {
     const newPivotRow = {
       Z: pivotTableLine.Z / pivotElement,
       Xs: pivotTableLine.Xs.map(x => x / pivotElement),
@@ -312,6 +463,7 @@ export function NewSimplex() {
     }
 
     return {
+      rowNumber: pivotRowNumber,
       newPivotRow,
       pivotRow: pivotTableLine,
       pivotElementToUse: pivotElement,
@@ -319,7 +471,7 @@ export function NewSimplex() {
   }
 
   return (
-    <main className="max-w-[550px] m-4 p-4 flex flex-col gap-3 border border-zinc-400 rounded-xl">
+    <main className="w-full m-4 p-4 flex flex-col items-center gap-3 border border-zinc-400 rounded-xl">
       <fieldset className="flex flex-col">
         <label htmlFor="objective">Função objetivo:</label>
         <input
@@ -386,13 +538,33 @@ export function NewSimplex() {
           case HistoryType.Nlp:
             return (
               <div className="flex flex-col">
-                <h2>NLP</h2>
+                <h2>
+                  <strong>(NLP)</strong> Nova linha {state.rowNumber + 1}ª
+                </h2>
                 <Nlp data={state} />
               </div>
             )
           case HistoryType.OtherLine:
-            return <div>Outra linha</div>
-
+            return (
+              <div className="flex flex-col">
+                <h2>Nova linha {state.rowNumber + 1}ª</h2>
+                <OtherLine data={state} />
+              </div>
+            )
+          case HistoryType.FinalTable:
+            return (
+              <div className="flex flex-col">
+                <h2>Tabela final</h2>
+                <FinalTable data={state} />
+              </div>
+            )
+          case HistoryType.Solution:
+            return (
+              <div className="flex flex-col">
+                <h2>Solução:</h2>
+                <Solution data={state} />
+              </div>
+            )
           default:
             break
         }

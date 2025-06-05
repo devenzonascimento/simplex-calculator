@@ -1,4 +1,4 @@
-import type { Table as TableType } from '../main'
+import type { TableType } from '../main'
 
 type TableProps = {
   data: TableType | undefined
@@ -51,9 +51,7 @@ export function Table({ data }: TableProps) {
             <tr
               key={lineIndex.toString()}
               className={
-                pivotRowNumber === lineIndex + 1
-                  ? 'border-4 border-blue-500'
-                  : ''
+                pivotRowNumber === lineIndex ? 'border-4 border-blue-500' : ''
               }
             >
               <td className="px-3 py-2 border border-zinc-300 text-center">
@@ -61,11 +59,11 @@ export function Table({ data }: TableProps) {
               </td>
               {line.Xs.map((x, i) => {
                 const isPivot =
-                  pivotRowNumber === lineIndex + 1 && pivotColNumber === i + 1
+                  pivotRowNumber === lineIndex && pivotColNumber === i + 1
                 return (
                   <td
                     key={i.toString()}
-                    className={`px-3 py-2   text-center ${
+                    className={`px-3 py-2  text-center ${
                       pivotColNumber === i + 1
                         ? 'border-x-4 border-blue-500'
                         : 'border border-zinc-300'
