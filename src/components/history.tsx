@@ -1,28 +1,9 @@
-import {
-  fmt,
-  HistoryType,
-  type FinalTableType,
-  type History,
-  type NlpType,
-  type OtherLineType,
-  type SolutionType,
-  type TableType,
-} from '../main'
+import { fmt, HistoryType, type History } from '../main'
 import { FinalTable } from './final-table'
 import { Nlp } from './nlp'
 import { OtherLine } from './other-line'
 import { Solution } from './solution'
 import { Table } from './table'
-
-// export type History = {
-//   state: TableType | NlpType | OtherLineType | FinalTableType | SolutionType
-//   type:
-//     | HistoryType.Table
-//     | HistoryType.Nlp
-//     | HistoryType.OtherLine
-//     | HistoryType.FinalTable
-//     | HistoryType.Solution
-// }
 
 export function HistoryManager({ state, type }: History) {
   switch (type) {
