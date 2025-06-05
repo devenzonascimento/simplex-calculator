@@ -63,21 +63,6 @@ export function OtherLine({ data }: OtherLineProps) {
           </tbody>
         </table>
       </div>
-
-      {/* <div className="flex flex-col">
-        <div className="mb-6 flex items-center justify-center gap-1">
-          <div className="size-4 flex flex-col items-center justify-center gap-0.5 font-bold">
-            X
-          </div>
-          <span className="font-bold text-lg">{fmt(coefficient)}</span>
-        </div>
-
-        <div className="flex items-center justify-center gap-1">
-          <div className="size-4 flex flex-col items-center justify-center gap-0.5 font-bold">
-            Soma
-          </div>
-        </div>
-      </div> */}
     </div>
   )
 }

@@ -12,7 +12,7 @@ export function Nlp({ data }: NlpProps) {
     ['Linha pivô', ...pivotRow.cells],
     ['Nova linha pivô', ...newPivotRow.cells],
   ]
-  
+
   return (
     <div className="flex items-center gap-3">
       <div className="flex-1 overflow-x-auto">
@@ -38,7 +38,7 @@ export function Nlp({ data }: NlpProps) {
                     key={`${i}-${j + 0}`}
                     className="px-3 py-2 border border-zinc-300 text-center"
                   >
-                    {typeof(c) === 'string' ? c : fmt(c)}
+                    {typeof c === 'string' ? c : fmt(c)}
                   </td>
                 ))}
               </tr>
@@ -46,15 +46,6 @@ export function Nlp({ data }: NlpProps) {
           </tbody>
         </table>
       </div>
-
-      {/* <div className="mt-14 flex items-center justify-center gap-1">
-        <div className="size-4 flex flex-col items-center justify-center gap-0.5">
-          <div className="h-1 w-1 rounded-full bg-black" />
-          <div className="h-0.5 w-full rounded-full bg-black" />
-          <div className="h-1 w-1 rounded-full bg-black" />
-        </div>
-        <span className="font-bold text-lg">{fmt(pivotElementToUse)}</span>
-      </div> */}
     </div>
   )
 }
