@@ -39,7 +39,7 @@ export function Table({ data }: TableProps) {
               {r.map((c, j) => (
                 <TableCell
                   key={`${i}-${j + 0}`}
-                  className={`${pivotRowNumber === i && pivotColNumber === j && 'bg-green-500'}`}
+                  className={`${pivotRowNumber === i && pivotColNumber === j && '!bg-white text-zinc-950 border-2 border-black'} ${pivotRowNumber === i || pivotColNumber === j ? 'bg-zinc-400' : ''}`}
                 >
                   {fmt(c)}
                 </TableCell>

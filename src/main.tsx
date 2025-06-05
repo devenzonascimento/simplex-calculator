@@ -160,7 +160,7 @@ const getKey = (row: TableRow, cellIndex: number) => {
   }
 
   if (cellIndex > row.v && cellIndex <= row.v + row.r) {
-    return `xf${cellIndex}`
+    return `xf${cellIndex - row.v}`
   }
 
   return 'unknown'
@@ -172,15 +172,19 @@ const columnContainsOnlyOneNumberOne = (columnCells: Fraction[]) => {
   for (let i = 0; i < columnCells.length; i++) {
     const cell = columnCells[i]
 
-    if (!cell.equals(1)) {
+    if (cell.equals(0)) {
       continue
     }
 
-    if (numberOneIndex !== -1) {
-      return -1
+    if (cell.equals(1)) {
+      if (numberOneIndex !== -1) {
+        return -1
+      }
+
+      numberOneIndex = i
     }
 
-    numberOneIndex = i
+    return -1
   }
 
   return numberOneIndex
@@ -496,7 +500,7 @@ export function NewSimplex() {
   }
 
   return (
-    <main className="h-dvh p-3 flex flex-col gap-3">
+    <main className="h-dvh p-4 flex flex-col gap-3 overflow-auto">
       <fieldset className="flex flex-col gap-1 bg-zinc-800 p-3 rounded-xl">
         <label htmlFor="objective" className="text-sm">
           Função objetivo:
@@ -560,6 +564,22 @@ export function NewSimplex() {
           <HistoryManager state={state} type={type} />
         </div>
       ))}
+
+      <div className="p-3 flex flex-col bg-zinc-800 rounded-xl">
+        <span className="font-semibold">Solução</span>
+
+        <div>
+          <ul>
+            <li>MAX LUCRO: 1170</li>
+            <li>X1: 15</li>
+            <li>X2: 85</li>
+            <li>XF1: 0</li>
+            <li>XF2: 0</li>
+            <li>10x1 + 12x2 = 1170</li>
+            <li>10.(15) + 12.(85) = 1170</li>
+          </ul>
+        </div>
+      </div>
     </main>
   )
 }

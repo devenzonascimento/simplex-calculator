@@ -42,7 +42,7 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
   return (
     <td
       data-slot="table-cell"
-      className="py-2 px-3 text-center align-middle"
+      className={`py-2 px-3 text-center align-middle ${className}`}
       {...props}
     />
   )
