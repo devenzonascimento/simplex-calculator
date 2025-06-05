@@ -1,4 +1,4 @@
-import type { TableType } from '../main'
+import { fmt, type TableType } from '../main'
 
 type TableProps = {
   data: TableType | undefined
@@ -55,7 +55,7 @@ export function Table({ data }: TableProps) {
               }
             >
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {line.Z}
+                {fmt(line.Z)}
               </td>
               {line.Xs.map((x, i) => {
                 const isPivot =
@@ -72,7 +72,7 @@ export function Table({ data }: TableProps) {
                     ${isPivot && 'bg-blue-100'}
                     `}
                   >
-                    <span className={isPivot ? 'font-bold' : ''}>{x}</span>
+                    <span className={isPivot ? 'font-bold' : ''}>{fmt(x)}</span>
                   </td>
                 )
               })}
@@ -81,11 +81,11 @@ export function Table({ data }: TableProps) {
                   key={i.toString()}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {xf}
+                  {fmt(xf)}
                 </td>
               ))}
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {line.B}
+                {fmt(line.B)}
               </td>
             </tr>
           ))}

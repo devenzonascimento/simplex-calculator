@@ -20,7 +20,7 @@ export const TableauDisplay: React.FC<Props> = ({ state, step }) => {
   // Função utilitária para renderizar uma Fraction como número com uma ou duas casas decimais
   const fmt = (f: Fraction) => {
     // Se for inteiro, mostra sem decimal; senão, com 2 casas
-    return f.d === 1 ? f.n.toString() : f.valueOf().toFixed(2)
+    return Number(f.d) === 1 ? f.n.toString() : f.valueOf().toFixed(2)
   }
 
   return (

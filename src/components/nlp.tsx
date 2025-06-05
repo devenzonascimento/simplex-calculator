@@ -1,4 +1,4 @@
-import type { NlpType } from '../main'
+import { fmt, type NlpType } from '../main'
 
 type NlpProps = {
   data: NlpType
@@ -40,7 +40,7 @@ export function Nlp({ data }: NlpProps) {
               </th>
             </tr>
           </thead>
-          
+
           <tbody>
             <tr>
               <td className="px-3 py-2 border border-zinc-300 text-center">
@@ -48,29 +48,29 @@ export function Nlp({ data }: NlpProps) {
               </td>
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {pivotRow.Z}
+                {fmt(pivotRow.Z)}
               </td>
 
               {pivotRow.Xs.map((x, i) => (
                 <td
-                  key={`X-${i.toString}`}
+                  key={`LP-X-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {x}
+                  {fmt(x)}
                 </td>
               ))}
 
               {pivotRow.XFs.map((xf, i) => (
                 <td
-                  key={`XF-${i.toString}`}
+                  key={`LP-XF-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {xf}
+                  {fmt(xf)}
                 </td>
               ))}
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {pivotRow.B}
+                {fmt(pivotRow.B)}
               </td>
             </tr>
 
@@ -80,43 +80,43 @@ export function Nlp({ data }: NlpProps) {
               </td>
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {newPivotRow.Z}
+                {fmt(newPivotRow.Z)}
               </td>
 
               {newPivotRow.Xs.map((x, i) => (
                 <td
-                  key={`X-${i.toString}`}
+                  key={`NLP-X-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {x}
+                  {fmt(x)}
                 </td>
               ))}
 
               {newPivotRow.XFs.map((xf, i) => (
                 <td
-                  key={`XF-${i.toString}`}
+                  key={`NLP-XF-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {xf}
+                  {fmt(xf)}
                 </td>
               ))}
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {newPivotRow.B}
+                {fmt(newPivotRow.B)}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div className="mt-14 flex items-center justify-center gap-1">
+      {/* <div className="mt-14 flex items-center justify-center gap-1">
         <div className="size-4 flex flex-col items-center justify-center gap-0.5">
           <div className="h-1 w-1 rounded-full bg-black" />
           <div className="h-0.5 w-full rounded-full bg-black" />
           <div className="h-1 w-1 rounded-full bg-black" />
         </div>
-        <span className='font-bold text-lg'>{pivotElementToUse}</span>
-      </div>
+        <span className="font-bold text-lg">{fmt(pivotElementToUse)}</span>
+      </div> */}
     </div>
   )
 }

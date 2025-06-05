@@ -1,4 +1,4 @@
-import type { FinalTableType } from '../main'
+import { fmt, type FinalTableType } from '../main'
 
 type FinalTableProps = {
   data: FinalTableType
@@ -30,7 +30,7 @@ export function FinalTable({ data }: FinalTableProps) {
                     key={`${i}-${j + 0}`}
                     className="px-3 py-2 border border-zinc-300 text-center"
                   >
-                    {c}
+                    {fmt(c)}
                   </td>
                 ))}
               </tr>

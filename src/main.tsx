@@ -8,6 +8,15 @@ import { OtherLine } from './components/other-line.tsx'
 import { FinalTable } from './components/final-table.tsx'
 import { Solution } from './components/solution.tsx'
 
+import Fraction from 'fraction.js'
+import { HistoryManager } from './components/history.tsx'
+export const F = (val: number | string) => new Fraction(val)
+// Função utilitária para renderizar uma Fraction como número com uma ou duas casas decimais
+export const fmt = (f: Fraction) => {
+  // Se for inteiro, mostra sem decimal; senão, com 2 casas
+  return Number(f.d) === 1 ? f.n.toString() : f.valueOf().toFixed(2)
+}
+
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -17,24 +26,24 @@ createRoot(document.getElementById('root')!).render(
 )
 
 export type TableLine = {
-  Z: number
-  Xs: number[]
-  XFs: number[]
-  B: number
+  Z: Fraction
+  Xs: Fraction[]
+  XFs: Fraction[]
+  B: Fraction
 }
 
 export type TableType = {
   tableRows: TableLine[]
   pivotColNumber: number
   pivotRowNumber: number
-  pivotElement: number
+  pivotElement: Fraction
 }
 
 export type NlpType = {
   rowNumber: number
   pivotRow: TableLine
   newPivotRow: TableLine
-  pivotElementToUse: number
+  pivotElementToUse: Fraction
 }
 
 export type OtherLineType = {
@@ -43,12 +52,12 @@ export type OtherLineType = {
   multipliedNewPivotRow: TableLine
   originalRow: TableLine
   resultRow: TableLine
-  coefficient: number
+  coefficient: Fraction
 }
 
 export type FinalTableType = {
   headers: string[]
-  table: number[][]
+  table: Fraction[][]
 }
 
 export type SolutionType = Record<string, number>
@@ -120,83 +129,124 @@ export function NewSimplex() {
     setRestrictions(prev => prev.filter((_, i) => i !== index))
   }
 
-  const extractObjectiveCOs = (exp: string) => {
+  const extractObjectiveCOs = (exp: string): Fraction[] => {
     const parts = exp.split(' ')
-
-    const result = []
+    const result: Fraction[] = []
 
     for (const part of parts) {
       const xIndex = part.indexOf('x')
-
-      if (xIndex === -1) {
-        continue
-      }
+      if (xIndex === -1) continue
 
       const co = part.slice(0, xIndex)
-
-      const value = co === '' ? 1 : Number(co)
-
-      result.push(value * -1)
+      const value = co === '' ? F(-1) : F(co).neg()
+      result.push(value)
     }
 
     return result
   }
+  // const extractObjectiveCOs = (exp: string) => {
+  //   const parts = exp.split(' ')
+
+  //   const result = []
+
+  //   for (const part of parts) {
+  //     const xIndex = part.indexOf('x')
+
+  //     if (xIndex === -1) {
+  //       continue
+  //     }
+
+  //     const co = part.slice(0, xIndex)
+
+  //     const value = co === '' ? 1 : Number(co)
+
+  //     result.push(value * -1)
+  //   }
+
+  //   return result
+  // }
 
   const extractRestrictionCOs = (exp: string): TableLine => {
     const parts = exp.split(' ')
 
-    const Xs = []
-    const XFs = []
-    let B = 0
+    const Xs: Fraction[] = []
+    const XFs: Fraction[] = []
+    let B = F(0)
 
     for (const part of parts) {
-      if (part === '<=' || part === '+') {
-        // result.push(part)
-        continue
-      }
+      if (part === '<=' || part === '+' || part === '') continue
 
       const xIndex = part.indexOf('x')
 
       if (xIndex === -1) {
-        B = Number(part)
+        B = F(part)
         continue
       }
 
       const co = part.slice(0, xIndex)
-
-      Xs.push(co === '' ? 1 : Number(co))
-      XFs.push(0)
+      Xs.push(co === '' ? F(1) : F(co))
+      XFs.push(F(0))
     }
 
-    return {
-      Z: 0,
-      Xs,
-      XFs,
-      B,
-    }
+    return { Z: F(0), Xs, XFs, B }
   }
+  // const extractRestrictionCOs = (exp: string): TableLine => {
+  //   const parts = exp.split(' ')
+
+  //   const Xs = []
+  //   const XFs = []
+  //   let B = 0
+
+  //   for (const part of parts) {
+  //     if (part === '<=' || part === '+') {
+  //       // result.push(part)
+  //       continue
+  //     }
+
+  //     const xIndex = part.indexOf('x')
+
+  //     if (xIndex === -1) {
+  //       B = Number(part)
+  //       continue
+  //     }
+
+  //     const co = part.slice(0, xIndex)
+
+  //     Xs.push(co === '' ? 1 : Number(co))
+  //     XFs.push(0)
+  //   }
+
+  //   return {
+  //     Z: 0,
+  //     Xs,
+  //     XFs,
+  //     B,
+  //   }
+  // }
 
   const handleSubmit = () => {
     // Fazer o parser da função objetivo
     const coefficients = extractObjectiveCOs(objective)
 
     const objectiveLine: TableLine = {
-      Z: 1,
-      Xs: coefficients.map(Number),
-      XFs: Array.from({ length: coefficients.length }, () => 0),
-      B: 0,
+      Z: new Fraction(1),
+      Xs: coefficients,
+      XFs: Array.from({ length: coefficients.length }, () => new Fraction(0)),
+      B: new Fraction(0),
     }
 
-    const restrictionsLines: TableLine[] = []
+    const restrictionsLines: TableLine[] = restrictions.map(
+      (restriction, index) => {
+        const line = extractRestrictionCOs(restriction)
 
-    restrictions.forEach((restriction, index) => {
-      const line = extractRestrictionCOs(restriction)
-
-      restrictionsLines.push({
-        ...line,
-        XFs: line.XFs.map((_, i) => (i === index ? 1 : 0)),
-      })
-    })
+        return {
+          ...line,
+          XFs: line.XFs.map((_, i) =>
+            i === index ? new Fraction(1) : new Fraction(0),
+          ),
+        }
+      },
+    )
 
     const firstTableRows = [objectiveLine, ...restrictionsLines]
 
@@ -280,51 +330,93 @@ export function NewSimplex() {
     const objectiveLine = tableRows[0]
 
     if (
-      objectiveLine.Z >= 0 &&
-      objectiveLine.Xs.every(x => x >= 0) &&
-      objectiveLine.XFs.every(xf => xf >= 0) &&
-      objectiveLine.B >= 0
+      objectiveLine.Z.compare(0) >= 0 &&
+      objectiveLine.Xs.every(x => x.compare(0) >= 0) &&
+      objectiveLine.XFs.every(x => x.compare(0) >= 0) &&
+      objectiveLine.B.compare(0) >= 0
     ) {
-      const map: Record<string, number[]> = {}
+      const map: Record<string, Fraction[]> = {}
 
       for (const row of tableRows) {
         row.Xs.forEach((x, index) => {
           const key = `X${index + 1}`
-
-          if (!map[key]) {
-            map[key] = []
-          }
-
+          map[key] = map[key] ?? []
           map[key].push(x)
         })
-
-        row.XFs.forEach((xf, index) => {
+        row.XFs.forEach((x, index) => {
           const key = `XF${index + 1}`
-
-          if (!map[key]) {
-            map[key] = []
-          }
-
-          map[key].push(xf)
+          map[key] = map[key] ?? []
+          map[key].push(x)
         })
       }
 
       const variables: Record<string, number> = {}
 
       for (const key in map) {
-        const value = map[key]
+        const values = map[key]
+        const sum = values.reduce((acc, v) => acc.add(v), new Fraction(0))
 
-        variables[key] =
-          value.reduce((acc, v) => acc + v) === 1
-            ? tableRows[value.indexOf(1)].B
-            : 0
+        variables[key] = sum.equals(1)
+          ? tableRows[values.findIndex(x => x.equals(1))].B.valueOf()
+          : 0
       }
+
       return {
-        maxLucro: objectiveLine.B,
+        maxLucro: objectiveLine.B.valueOf(),
         ...variables,
       }
     }
   }
+
+  // const finalizeSimplex = (tableRows: TableLine[]) => {
+  //   const objectiveLine = tableRows[0]
+
+  //   if (
+  //     objectiveLine.Z >= 0 &&
+  //     objectiveLine.Xs.every(x => x >= 0) &&
+  //     objectiveLine.XFs.every(xf => xf >= 0) &&
+  //     objectiveLine.B >= 0
+  //   ) {
+  //     const map: Record<string, number[]> = {}
+
+  //     for (const row of tableRows) {
+  //       row.Xs.forEach((x, index) => {
+  //         const key = `X${index + 1}`
+
+  //         if (!map[key]) {
+  //           map[key] = []
+  //         }
+
+  //         map[key].push(x)
+  //       })
+
+  //       row.XFs.forEach((xf, index) => {
+  //         const key = `XF${index + 1}`
+
+  //         if (!map[key]) {
+  //           map[key] = []
+  //         }
+
+  //         map[key].push(xf)
+  //       })
+  //     }
+
+  //     const variables: Record<string, number> = {}
+
+  //     for (const key in map) {
+  //       const value = map[key]
+
+  //       variables[key] =
+  //         value.reduce((acc, v) => acc + v) === 1
+  //           ? tableRows[value.indexOf(1)].B
+  //           : 0
+  //     }
+  //     return {
+  //       maxLucro: objectiveLine.B,
+  //       ...variables,
+  //     }
+  //   }
+  // }
 
   const generateTableAndPivots = (tableRows: TableLine[]): TableType | null => {
     const pivotColNumber = calculatePivotCol(tableRows[0])
@@ -356,55 +448,99 @@ export function NewSimplex() {
     const result: OtherLineType[] = []
 
     tableData.tableRows.forEach((row, rowIndex) => {
-      // Se for a NLP retorna
-      if (rowIndex === tableData.pivotRowNumber) {
-        return
+      if (rowIndex === tableData.pivotRowNumber) return
+
+      const co = row.Xs[tableData.pivotColNumber - 1].neg()
+
+      const multipliedNewPivotRow: TableLine = {
+        Z: newPivotRow.Z.mul(co),
+        Xs: newPivotRow.Xs.map(x => x.mul(co)),
+        XFs: newPivotRow.XFs.map(x => x.mul(co)),
+        B: newPivotRow.B.mul(co),
       }
 
-      const co = row.Xs[tableData.pivotColNumber - 1] * -1
-
-      const multipliedNewPivotRow = {
-        Z: newPivotRow.Z * co,
-        Xs: newPivotRow.Xs.map(x => x * co),
-        XFs: newPivotRow.XFs.map(x => x * co),
-        B: newPivotRow.B * co,
+      const resultRow: TableLine = {
+        Z: multipliedNewPivotRow.Z.add(row.Z),
+        Xs: multipliedNewPivotRow.Xs.map((x, i) => x.add(row.Xs[i])),
+        XFs: multipliedNewPivotRow.XFs.map((x, i) => x.add(row.XFs[i])),
+        B: multipliedNewPivotRow.B.add(row.B),
       }
 
-      const resultRow = {
-        Z: multipliedNewPivotRow.Z + row.Z,
-        Xs: multipliedNewPivotRow.Xs.map((x, i) => x + row.Xs[i]),
-        XFs: multipliedNewPivotRow.XFs.map((xf, i) => xf + row.XFs[i]),
-        B: multipliedNewPivotRow.B + row.B,
-      }
-
-      const otherLine: OtherLineType = {
+      result.push({
         rowNumber: rowIndex,
         newPivotRow,
         multipliedNewPivotRow,
         originalRow: row,
         resultRow,
         coefficient: co,
-      }
-
-      // TODO: Verificar mais algumas regras de simplex para ter certeza sobre o calculo.
-      // TODO: Criar um novo tipo chamado tabela final
-      // TODO: Criar apresentação de solução com prova real
-      // TODO: Componentizar e implementar o loop de soluções.
-
-      result.push(otherLine)
+      })
     })
 
     return result
   }
+  // const calculateOthersLine = (
+  //   newPivotRow: TableLine,
+  //   tableData: TableType,
+  // ): OtherLineType[] => {
+  //   const result: OtherLineType[] = []
+
+  //   tableData.tableRows.forEach((row, rowIndex) => {
+  //     // Se for a NLP retorna
+  //     if (rowIndex === tableData.pivotRowNumber) {
+  //       return
+  //     }
+
+  //     const co = row.Xs[tableData.pivotColNumber - 1] * -1
+
+  //     const multipliedNewPivotRow = {
+  //       Z: newPivotRow.Z * co,
+  //       Xs: newPivotRow.Xs.map(x => x * co),
+  //       XFs: newPivotRow.XFs.map(x => x * co),
+  //       B: newPivotRow.B * co,
+  //     }
+
+  //     const resultRow = {
+  //       Z: multipliedNewPivotRow.Z + row.Z,
+  //       Xs: multipliedNewPivotRow.Xs.map((x, i) => x + row.Xs[i]),
+  //       XFs: multipliedNewPivotRow.XFs.map((xf, i) => xf + row.XFs[i]),
+  //       B: multipliedNewPivotRow.B + row.B,
+  //     }
+
+  //     const otherLine: OtherLineType = {
+  //       rowNumber: rowIndex,
+  //       newPivotRow,
+  //       multipliedNewPivotRow,
+  //       originalRow: row,
+  //       resultRow,
+  //       coefficient: co,
+  //     }
+
+  //     // TODO: Verificar mais algumas regras de simplex para ter certeza sobre o calculo.
+  //     // TODO: Criar um novo tipo chamado tabela final
+  //     // TODO: Criar apresentação de solução com prova real
+  //     // TODO: Componentizar e implementar o loop de soluções.
+
+  //     result.push(otherLine)
+  //   })
+
+  //   return result
+  // }
 
   const calculatePivotCol = (firstLine: TableLine) => {
-    let max = 0
+    let max = F(0)
     let index = 0
     let assign = false
 
     firstLine.Xs.forEach((x, i) => {
-      if (max < Math.abs(x)) {
-        max = Math.abs(x)
+      console.log({
+        max: max.valueOf(),
+        x: x.valueOf(),
+        i,
+        assign,
+        compare: x.compare(max),
+      })
+      if (x.compare(max) === -1) {
+        max = x
         assign = true
         index = i + 1
       }
@@ -417,7 +553,7 @@ export function NewSimplex() {
     tableRows: TableLine[],
     pivotColNumber: number,
   ) => {
-    let min = Number.MAX_SAFE_INTEGER
+    let min = F(Number.MAX_SAFE_INTEGER)
     let index = 0
     let assign = false
 
@@ -428,9 +564,9 @@ export function NewSimplex() {
 
       const co = row.Xs?.[pivotColNumber - 1]
 
-      const value = row.B / co
+      const value = row.B.div(co)
 
-      if (min > value) {
+      if (min.compare(value) === 1) {
         min = value
         assign = true
         index = rowIndex
@@ -452,14 +588,14 @@ export function NewSimplex() {
 
   const calculateNlp = (
     pivotTableLine: TableLine,
-    pivotElement: number,
+    pivotElement: Fraction,
     pivotRowNumber: number,
   ): NlpType => {
-    const newPivotRow = {
-      Z: pivotTableLine.Z / pivotElement,
-      Xs: pivotTableLine.Xs.map(x => x / pivotElement),
-      XFs: pivotTableLine.XFs.map(x => x / pivotElement),
-      B: pivotTableLine.B / pivotElement,
+    const newPivotRow: TableLine = {
+      Z: pivotTableLine.Z.div(pivotElement),
+      Xs: pivotTableLine.Xs.map(x => x.div(pivotElement)),
+      XFs: pivotTableLine.XFs.map(x => x.div(pivotElement)),
+      B: pivotTableLine.B.div(pivotElement),
     }
 
     return {
@@ -526,49 +662,12 @@ export function NewSimplex() {
         Gerar tabela
       </button>
 
-      {history.map(({ state, type }) => {
-        switch (type) {
-          case HistoryType.Table:
-            return (
-              <div className="flex flex-col">
-                <h2>Table</h2>
-                <Table data={state} />
-              </div>
-            )
-          case HistoryType.Nlp:
-            return (
-              <div className="flex flex-col">
-                <h2>
-                  <strong>(NLP)</strong> Nova linha {state.rowNumber + 1}ª
-                </h2>
-                <Nlp data={state} />
-              </div>
-            )
-          case HistoryType.OtherLine:
-            return (
-              <div className="flex flex-col">
-                <h2>Nova linha {state.rowNumber + 1}ª</h2>
-                <OtherLine data={state} />
-              </div>
-            )
-          case HistoryType.FinalTable:
-            return (
-              <div className="flex flex-col">
-                <h2>Tabela final</h2>
-                <FinalTable data={state} />
-              </div>
-            )
-          case HistoryType.Solution:
-            return (
-              <div className="flex flex-col">
-                <h2>Solução:</h2>
-                <Solution data={state} />
-              </div>
-            )
-          default:
-            break
-        }
-      })}
+      {history.map(({ state, type }, index) => (
+        <div key={`${type}-${index.toString()}`} className="flex flex-col">
+          {/* @ts-ignore */}
+          <HistoryManager state={state} type={type} />
+        </div>
+      ))}
     </main>
   )
 }

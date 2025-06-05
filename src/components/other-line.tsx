@@ -1,4 +1,4 @@
-import type { OtherLineType } from '../main'
+import { fmt, type OtherLineType } from '../main'
 
 type OtherLineProps = {
   data: OtherLineType
@@ -56,61 +56,61 @@ export function OtherLine({ data }: OtherLineProps) {
               </td>
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {newPivotRow.Z}
+                {fmt(newPivotRow.Z)}
               </td>
 
               {newPivotRow.Xs.map((x, i) => (
                 <td
-                  key={`X-${i.toString}`}
+                  key={`NLP-X-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {x}
+                  {fmt(x)}
                 </td>
               ))}
 
               {newPivotRow.XFs.map((xf, i) => (
                 <td
-                  key={`XF-${i.toString}`}
+                  key={`NLP-XF-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {xf}
+                  {fmt(xf)}
                 </td>
               ))}
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {newPivotRow.B}
+                {fmt(newPivotRow.B)}
               </td>
             </tr>
 
             <tr>
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                Multiplicou: {coefficient}
+                Multiplicou: {fmt(coefficient)}
               </td>
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {multipliedNewPivotRow.Z}
+                {fmt(multipliedNewPivotRow.Z)}
               </td>
 
               {multipliedNewPivotRow.Xs.map((x, i) => (
                 <td
-                  key={`X-${i.toString}`}
+                  key={`MULT-X-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {x}
+                  {fmt(x)}
                 </td>
               ))}
 
               {multipliedNewPivotRow.XFs.map((xf, i) => (
                 <td
-                  key={`XF-${i.toString}`}
+                  key={`MULT-XF-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {xf}
+                  {fmt(xf)}
                 </td>
               ))}
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {multipliedNewPivotRow.B}
+                {fmt(multipliedNewPivotRow.B)}
               </td>
             </tr>
 
@@ -120,29 +120,29 @@ export function OtherLine({ data }: OtherLineProps) {
               </td>
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {originalRow.Z}
+                {fmt(originalRow.Z)}
               </td>
 
               {originalRow.Xs.map((x, i) => (
                 <td
-                  key={`X-${i.toString}`}
+                  key={`ORIGINAL-X-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {x}
+                  {fmt(x)}
                 </td>
               ))}
 
               {originalRow.XFs.map((xf, i) => (
                 <td
-                  key={`XF-${i.toString}`}
+                  key={`ORIGINAL-XF-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {xf}
+                  {fmt(xf)}
                 </td>
               ))}
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {originalRow.B}
+                {fmt(originalRow.B)}
               </td>
             </tr>
 
@@ -152,41 +152,41 @@ export function OtherLine({ data }: OtherLineProps) {
               </td>
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {resultRow.Z}
+                {fmt(resultRow.Z)}
               </td>
 
               {resultRow.Xs.map((x, i) => (
                 <td
-                  key={`X-${i.toString}`}
+                  key={`RESULT-X-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {x}
+                  {fmt(x)}
                 </td>
               ))}
 
               {resultRow.XFs.map((xf, i) => (
                 <td
-                  key={`XF-${i.toString}`}
+                  key={`RESULT-XF-${i.toString()}`}
                   className="px-3 py-2 border border-zinc-300 text-center"
                 >
-                  {xf}
+                  {fmt(xf)}
                 </td>
               ))}
 
               <td className="px-3 py-2 border border-zinc-300 text-center">
-                {resultRow.B}
+                {fmt(resultRow.B)}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div className="flex flex-col">
+      {/* <div className="flex flex-col">
         <div className="mb-6 flex items-center justify-center gap-1">
           <div className="size-4 flex flex-col items-center justify-center gap-0.5 font-bold">
             X
           </div>
-          <span className="font-bold text-lg">{coefficient}</span>
+          <span className="font-bold text-lg">{fmt(coefficient)}</span>
         </div>
 
         <div className="flex items-center justify-center gap-1">
@@ -194,7 +194,7 @@ export function OtherLine({ data }: OtherLineProps) {
             Soma
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   )
 }
