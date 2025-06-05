@@ -1,4 +1,5 @@
 import {
+  fmt,
   HistoryType,
   type FinalTableType,
   type History,
@@ -28,15 +29,18 @@ export function HistoryManager({ state, type }: History) {
     case HistoryType.Table:
       return (
         <>
-          <h2>Table</h2>
+          <h2>{state.tableNumber}ª Tabela</h2>
           <Table data={state} />
         </>
       )
     case HistoryType.Nlp:
       return (
         <>
-          <h2>
-            <strong>(NLP)</strong> Nova linha {state.rowNumber + 1}ª
+          <h2 className="px-2 flex items-center justify-between">
+            <span>
+              <strong>(NLP)</strong> Nova {state.rowNumber + 1}ª linha
+            </span>
+            <span>Dividindo pelo {fmt(state.pivotElementToUse)}</span>
           </h2>
           <Nlp data={state} />
         </>
@@ -44,7 +48,11 @@ export function HistoryManager({ state, type }: History) {
     case HistoryType.OtherLine:
       return (
         <>
-          <h2>Nova linha {state.rowNumber + 1}ª</h2>
+          <h2 className="px-2 flex items-center justify-between">
+            <span>Nova {state.rowNumber + 1}ª linha</span>
+
+            <span>Multiplicando pelo coeficiente {fmt(state.coefficient)}</span>
+          </h2>
           <OtherLine data={state} />
         </>
       )

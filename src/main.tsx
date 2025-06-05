@@ -36,6 +36,7 @@ export type TableLine = {
 }
 
 export type TableType = {
+  tableNumber?: number
   tableRows: TableRow[]
   pivotColNumber: number
   pivotRowNumber: number
@@ -63,7 +64,10 @@ export type FinalTableType = {
   table: Fraction[][]
 }
 
-export type SolutionType = Record<string, Fraction>
+export type SolutionType = {
+  objectiveFunction: string
+  results: Record<string, Fraction>
+}
 
 export enum HistoryType {
   Table = 0,
@@ -135,8 +139,8 @@ const finalizeSimplex = (tableRows: TableRow[]) => {
       if (bIndex >= 0) {
         const row = tableRows[bIndex]
         const variableKey = getKey(tableRows[0], key)
-
         result[variableKey] = row.cells?.[row.cells.length - 1]
+        return
       }
 
       result[getKey(tableRows[0], key)] = F(0)
@@ -182,6 +186,7 @@ const columnContainsOnlyOneNumberOne = (columnCells: Fraction[]) => {
       }
 
       numberOneIndex = i
+      continue
     }
 
     return -1
@@ -194,7 +199,10 @@ export const generateTableHeaders = (tableRows: TableRow[]) => {
   return tableRows[0].cells.map((_, i) => getKey(tableRows[0], i))
 }
 
-const generateTableAndPivots = (tableRows: TableRow[]): TableType | null => {
+const generateTableAndPivots = (
+  tableRows: TableRow[],
+  tableNumber: number,
+): TableType | null => {
   const pivotColNumber = calculatePivotCol(tableRows[0])
 
   if (!pivotColNumber) return null
@@ -210,6 +218,7 @@ const generateTableAndPivots = (tableRows: TableRow[]): TableType | null => {
   )
 
   return {
+    tableNumber,
     pivotColNumber,
     pivotRowNumber,
     pivotElement,
@@ -438,7 +447,9 @@ export function NewSimplex() {
 
     const firstTableRows = [objectiveRow, ...restrictionRows]
 
-    const firstTableData = generateTableAndPivots(firstTableRows)
+    let tableCounter = 1
+
+    const firstTableData = generateTableAndPivots(firstTableRows, 1)
 
     if (!firstTableData) {
       alert('deu ruim')
@@ -482,11 +493,20 @@ export function NewSimplex() {
           },
           type: HistoryType.FinalTable,
         })
-        history.push({ state: result, type: HistoryType.Solution })
+
+        history.push({
+          state: {
+            objectiveFunction: objective,
+            results: result,
+          },
+          type: HistoryType.Solution,
+        })
         break
       }
 
-      tableData = generateTableAndPivots(tableRowsSorted)
+      tableCounter += 1
+
+      tableData = generateTableAndPivots(tableRowsSorted, tableCounter)
 
       if (!tableData) {
         alert('deu ruim')
@@ -564,22 +584,6 @@ export function NewSimplex() {
           <HistoryManager state={state} type={type} />
         </div>
       ))}
-
-      <div className="p-3 flex flex-col bg-zinc-800 rounded-xl">
-        <span className="font-semibold">Solução</span>
-
-        <div>
-          <ul>
-            <li>MAX LUCRO: 1170</li>
-            <li>X1: 15</li>
-            <li>X2: 85</li>
-            <li>XF1: 0</li>
-            <li>XF2: 0</li>
-            <li>10x1 + 12x2 = 1170</li>
-            <li>10.(15) + 12.(85) = 1170</li>
-          </ul>
-        </div>
-      </div>
     </main>
   )
 }
