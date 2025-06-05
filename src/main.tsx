@@ -10,7 +10,7 @@ export const F = (val: number | string) => new Fraction(val)
 // Função utilitária para renderizar uma Fraction como número com uma ou duas casas decimais
 export const fmt = (f: Fraction) => {
   // Se for inteiro, mostra sem decimal; senão, com 2 casas
-  return Number(f.d) === 1 ? f.n.toString() : f.valueOf().toFixed(2)
+  return Number(f.d) === 1 ? f.valueOf() : f.valueOf().toFixed(2)
 }
 
 // biome-ignore lint/style/noNonNullAssertion: <explanation>
