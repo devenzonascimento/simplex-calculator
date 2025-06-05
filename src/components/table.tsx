@@ -1,4 +1,12 @@
 import { fmt, generateTableHeaders, type TableType } from '../main'
+import {
+  Table as StrippedTable,
+  TableHeader,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableCell,
+} from './stripped-table.tsx'
 
 type TableProps = {
   data: TableType | undefined
@@ -16,35 +24,30 @@ export function Table({ data }: TableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full border-zinc-400 rounded-lg">
-        <thead>
-          <tr>
+      <StrippedTable>
+        <TableHeader>
+          <TableRow>
             {headers.map(h => (
-              <th
-                key={h}
-                className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100"
-              >
-                {h}
-              </th>
+              <TableHead key={h}>{h}</TableHead>
             ))}
-          </tr>
-        </thead>
+          </TableRow>
+        </TableHeader>
 
-        <tbody>
+        <TableBody>
           {body.map((r, i) => (
-            <tr key={i.toString()}>
+            <TableRow key={i.toString()}>
               {r.map((c, j) => (
-                <td
+                <TableCell
                   key={`${i}-${j + 0}`}
-                  className={`px-3 py-2 border border-zinc-300 text-center ${pivotRowNumber === i && pivotColNumber === j && 'bg-green-500'}`}
+                  className={`${pivotRowNumber === i && pivotColNumber === j && 'bg-green-500'}`}
                 >
                   {fmt(c)}
-                </td>
+                </TableCell>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </StrippedTable>
     </div>
   )
 }

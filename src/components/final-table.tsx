@@ -1,4 +1,12 @@
 import { fmt, type FinalTableType } from '../main'
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableCell,
+} from './stripped-table.tsx'
 
 type FinalTableProps = {
   data: FinalTableType
@@ -6,38 +14,28 @@ type FinalTableProps = {
 
 export function FinalTable({ data }: FinalTableProps) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 overflow-x-auto">
-        <table className="min-w-full border-zinc-400 rounded-lg">
-          <thead>
-            <tr>
-              {data.headers.map(h => (
-                <th
-                  key={h}
-                  className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100"
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {data.table.map((r, i) => (
-              <tr key={i.toString()}>
-                {r.map((c, j) => (
-                  <td
-                    key={`${i}-${j + 0}`}
-                    className="px-3 py-2 border border-zinc-300 text-center"
-                  >
-                    {fmt(c)}
-                  </td>
-                ))}
-              </tr>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {data.headers.map(h => (
+              <TableHead key={h}>{h}</TableHead>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableRow>
+        </TableHeader>
+
+        <TableBody>
+          {data.table.map((r, i) => (
+            <TableRow key={i.toString()}>
+              {r.map((c, j) => (
+                <TableCell key={`${i}-${j + 0}`}>
+                  {typeof c === 'string' ? c : fmt(c)}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 }

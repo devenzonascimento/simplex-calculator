@@ -5,6 +5,7 @@ import App from './App.tsx'
 
 import Fraction from 'fraction.js'
 import { HistoryManager } from './components/history.tsx'
+
 export const F = (val: number | string) => new Fraction(val)
 // Função utilitária para renderizar uma Fraction como número com uma ou duas casas decimais
 export const fmt = (f: Fraction) => {
@@ -495,56 +496,59 @@ export function NewSimplex() {
   }
 
   return (
-    <main className="w-full m-4 p-4 flex flex-col items-center gap-3 border border-zinc-400 rounded-xl">
-      <fieldset className="flex flex-col">
-        <label htmlFor="objective">Função objetivo:</label>
+    <main className="h-dvh p-3 flex flex-col gap-3">
+      <fieldset className="flex flex-col gap-1 bg-zinc-800 p-3 rounded-xl">
+        <label htmlFor="objective" className="text-sm">
+          Função objetivo:
+        </label>
         <input
           id="objective"
           type="text"
-          className="text-sm p-1 border border-zinc-400 rounded-lg"
+          className="font-semibold py-1 px-2 border border-zinc-400 rounded-lg"
           value={objective}
           onChange={e => setObjective(e.target.value)}
         />
       </fieldset>
 
-      <fieldset className="flex flex-col">
+      <fieldset className="flex flex-col bg-zinc-800 p-3 rounded-xl">
         <div className="mb-1 flex items-center justify-between">
-          <span>Restrições:</span>
-          <button
-            type="button"
-            className="text-sm py-1 px-2 border border-zinc-400 rounded-md"
-            onClick={handleAddRestriction}
-          >
-            Adicionar restrição
-          </button>
+          <span className="text-sm">Restrições:</span>
         </div>
 
         {restrictions.map((restriction, index) => (
           <div
             key={index.toString()}
-            className="w-full flex items-center gap-2"
+            className="mb-2 w-full flex items-center gap-2"
           >
             <input
               type="text"
-              className="flex-1 text-sm p-1 border border-zinc-400 rounded-lg"
+              className="flex-1 font-semibold py-1 px-2 border border-zinc-400 rounded-lg"
               value={restriction}
               onChange={e => handleRestrictionChange(index, e.target.value)}
             />
 
             <button
               type="button"
-              className="text-sm py-1 px-2 border border-zinc-400 rounded-md"
+              className="font-semibold py-1 px-2 border border-zinc-400 rounded-md"
               onClick={() => handleRemoveRestriction(index)}
             >
               Remover
             </button>
           </div>
         ))}
+
+        <button
+          type="button"
+          className="font-semibold p-3 border border-zinc-400 rounded-md"
+          onClick={handleAddRestriction}
+        >
+          Adicionar restrição
+        </button>
       </fieldset>
 
       <button
         type="button"
-        className="mx-auto text py-1 px-2 border border-zinc-400 rounded-md"
+        className="mx-auto w-full font-semibold p-3 text-zinc-950 bg-white rounded-md"
         onClick={handleSubmit}
       >
         Gerar tabela
