@@ -1,110 +1,48 @@
-import { fmt, type NlpType } from '../main'
+import { fmt, generateTableHeaders, type NlpType } from '../main'
 
 type NlpProps = {
   data: NlpType
 }
 
 export function Nlp({ data }: NlpProps) {
-  const { pivotRow, newPivotRow, pivotElementToUse } = data
+  const { pivotRow, newPivotRow } = data
+
+  const headers = ['Origem', ...generateTableHeaders([pivotRow, newPivotRow])]
+  const body = [
+    ['Linha pivô', ...pivotRow.cells],
+    ['Nova linha pivô', ...newPivotRow.cells],
+  ]
+  
   return (
     <div className="flex items-center gap-3">
       <div className="flex-1 overflow-x-auto">
         <table className="min-w-full border-zinc-400 rounded-lg">
           <thead>
             <tr>
-              <th className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100">
-                Origem
-              </th>
-
-              <th className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100">
-                Z
-              </th>
-              {pivotRow.Xs.map((_, i) => (
+              {headers.map(h => (
                 <th
-                  key={i.toString()}
+                  key={h}
                   className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100"
                 >
-                  X{i + 1}
+                  {h}
                 </th>
               ))}
-              {pivotRow.XFs.map((_, i) => (
-                <th
-                  key={i.toString()}
-                  className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100"
-                >
-                  XF{i + 1}
-                </th>
-              ))}
-              <th className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100">
-                B
-              </th>
             </tr>
           </thead>
 
           <tbody>
-            <tr>
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                Linha pivô
-              </td>
-
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                {fmt(pivotRow.Z)}
-              </td>
-
-              {pivotRow.Xs.map((x, i) => (
-                <td
-                  key={`LP-X-${i.toString()}`}
-                  className="px-3 py-2 border border-zinc-300 text-center"
-                >
-                  {fmt(x)}
-                </td>
-              ))}
-
-              {pivotRow.XFs.map((xf, i) => (
-                <td
-                  key={`LP-XF-${i.toString()}`}
-                  className="px-3 py-2 border border-zinc-300 text-center"
-                >
-                  {fmt(xf)}
-                </td>
-              ))}
-
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                {fmt(pivotRow.B)}
-              </td>
-            </tr>
-
-            <tr>
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                Nova linha pivô
-              </td>
-
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                {fmt(newPivotRow.Z)}
-              </td>
-
-              {newPivotRow.Xs.map((x, i) => (
-                <td
-                  key={`NLP-X-${i.toString()}`}
-                  className="px-3 py-2 border border-zinc-300 text-center"
-                >
-                  {fmt(x)}
-                </td>
-              ))}
-
-              {newPivotRow.XFs.map((xf, i) => (
-                <td
-                  key={`NLP-XF-${i.toString()}`}
-                  className="px-3 py-2 border border-zinc-300 text-center"
-                >
-                  {fmt(xf)}
-                </td>
-              ))}
-
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                {fmt(newPivotRow.B)}
-              </td>
-            </tr>
+            {body.map((r, i) => (
+              <tr key={i.toString()}>
+                {r.map((c, j) => (
+                  <td
+                    key={`${i}-${j + 0}`}
+                    className="px-3 py-2 border border-zinc-300 text-center"
+                  >
+                    {typeof(c) === 'string' ? c : fmt(c)}
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

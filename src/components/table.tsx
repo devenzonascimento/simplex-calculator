@@ -1,4 +1,4 @@
-import { fmt, type TableType } from '../main'
+import { fmt, generateTableHeaders, type TableType } from '../main'
 
 type TableProps = {
   data: TableType | undefined
@@ -9,84 +9,38 @@ export function Table({ data }: TableProps) {
     return null
   }
 
-  const { pivotColNumber, pivotRowNumber } = data
+  const { tableRows, pivotColNumber, pivotRowNumber } = data
+
+  const headers = generateTableHeaders(tableRows)
+  const body = tableRows.map(r => r.cells)
 
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full border-zinc-400 rounded-lg">
         <thead>
           <tr>
-            <th className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100">
-              Z
-            </th>
-            {data?.tableRows?.[0].Xs.map((_, i) => (
+            {headers.map(h => (
               <th
-                key={i.toString()}
-                aria-selected={pivotColNumber === i + 1}
-                className={`px-3 py-2  text-center bg-zinc-100 ${
-                  pivotColNumber === i + 1
-                    ? 'border-b-1 border-b-zinc-300 border-4 border-blue-500'
-                    : 'border border-zinc-300'
-                }`}
-              >
-                X{i + 1}
-              </th>
-            ))}
-            {data?.tableRows?.[0].XFs.map((_, i) => (
-              <th
-                key={i.toString()}
+                key={h}
                 className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100"
               >
-                XF{i + 1}
+                {h}
               </th>
             ))}
-            <th className="px-3 py-2 border border-zinc-300 text-center bg-zinc-100">
-              B
-            </th>
           </tr>
         </thead>
 
         <tbody>
-          {data?.tableRows.map((line, lineIndex) => (
-            <tr
-              key={lineIndex.toString()}
-              className={
-                pivotRowNumber === lineIndex ? 'border-4 border-blue-500' : ''
-              }
-            >
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                {fmt(line.Z)}
-              </td>
-              {line.Xs.map((x, i) => {
-                const isPivot =
-                  pivotRowNumber === lineIndex && pivotColNumber === i + 1
-                return (
-                  <td
-                    key={i.toString()}
-                    className={`px-3 py-2  text-center ${
-                      pivotColNumber === i + 1
-                        ? 'border-x-4 border-blue-500'
-                        : 'border border-zinc-300'
-                    }
-                    ${lineIndex === data.tableRows.length - 1 && pivotColNumber === i + 1 ? 'border-b-4' : ''}
-                    ${isPivot && 'bg-blue-100'}
-                    `}
-                  >
-                    <span className={isPivot ? 'font-bold' : ''}>{fmt(x)}</span>
-                  </td>
-                )
-              })}
-              {line.XFs.map((xf, i) => (
+          {body.map((r, i) => (
+            <tr key={i.toString()}>
+              {r.map((c, j) => (
                 <td
-                  key={i.toString()}
-                  className="px-3 py-2 border border-zinc-300 text-center"
+                  key={`${i}-${j + 0}`}
+                  className={`px-3 py-2 border border-zinc-300 text-center ${pivotRowNumber === i && pivotColNumber === j && 'bg-green-500'}`}
                 >
-                  {fmt(xf)}
+                  {fmt(c)}
                 </td>
               ))}
-              <td className="px-3 py-2 border border-zinc-300 text-center">
-                {fmt(line.B)}
-              </td>
             </tr>
           ))}
         </tbody>

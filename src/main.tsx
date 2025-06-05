@@ -25,6 +25,13 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
+export type TableRow = {
+  // variables
+  v: number
+  // restrictions
+  r: number
+  cells: Fraction[]
+}
 export type TableLine = {
   Z: Fraction
   Xs: Fraction[]
@@ -33,7 +40,7 @@ export type TableLine = {
 }
 
 export type TableType = {
-  tableRows: TableLine[]
+  tableRows: TableRow[]
   pivotColNumber: number
   pivotRowNumber: number
   pivotElement: Fraction
@@ -41,17 +48,17 @@ export type TableType = {
 
 export type NlpType = {
   rowNumber: number
-  pivotRow: TableLine
-  newPivotRow: TableLine
+  pivotRow: TableRow
+  newPivotRow: TableRow
   pivotElementToUse: Fraction
 }
 
 export type OtherLineType = {
   rowNumber: number
-  newPivotRow: TableLine
-  multipliedNewPivotRow: TableLine
-  originalRow: TableLine
-  resultRow: TableLine
+  newPivotRow: TableRow
+  multipliedNewPivotRow: TableRow
+  originalRow: TableRow
+  resultRow: TableRow
   coefficient: Fraction
 }
 
@@ -60,7 +67,7 @@ export type FinalTableType = {
   table: Fraction[][]
 }
 
-export type SolutionType = Record<string, number>
+export type SolutionType = Record<string, Fraction>
 
 export enum HistoryType {
   Table = 0,
@@ -91,6 +98,236 @@ export type History =
       state: SolutionType
       type: HistoryType.Solution
     }
+
+const finalizeSimplex = (tableRows: TableRow[]) => {
+  console.log(tableRows.map(r => r.cells.map(c => c.valueOf())))
+  const objectiveRow = tableRows[0]
+
+  if (objectiveRow.cells.every(c => c.gte(0))) {
+    const result: Record<string, Fraction> = {}
+
+    const tableCols = new Map<number, Fraction[]>()
+
+    for (let i = 0; i < tableRows.length; i++) {
+      const { cells } = tableRows[i]
+
+      for (let j = 0; j < cells.length; j++) {
+        const cell = cells[j]
+
+        const colValues = tableCols.get(j)
+
+        if (!colValues) {
+          tableCols.set(j, [cell])
+          continue
+        }
+
+        colValues?.push(cell)
+      }
+    }
+
+    tableCols.forEach((col, key) =>
+      console.log(
+        key,
+        ': ',
+        col.map(c => c.valueOf()),
+      ),
+    )
+
+    tableCols.forEach((cells, key) => {
+      const bIndex = columnContainsOnlyOneNumberOne(cells)
+
+      if (bIndex >= 0) {
+        const row = tableRows[bIndex]
+        const variableKey = getKey(tableRows[0], key)
+
+        result[variableKey] = row.cells?.[row.cells.length - 1]
+      }
+
+      result[getKey(tableRows[0], key)] = F(0)
+    })
+
+    return result
+  }
+}
+
+const getKey = (row: TableRow, cellIndex: number) => {
+  if (cellIndex === 0) {
+    return 'z'
+  }
+
+  if (cellIndex === row.cells.length - 1) {
+    return 'b'
+  }
+
+  if (cellIndex > 0 && cellIndex <= row.v) {
+    return `x${cellIndex}`
+  }
+
+  if (cellIndex > row.v && cellIndex <= row.v + row.r) {
+    return `xf${cellIndex}`
+  }
+
+  return 'unknown'
+}
+
+const columnContainsOnlyOneNumberOne = (columnCells: Fraction[]) => {
+  let numberOneIndex = -1
+
+  for (let i = 0; i < columnCells.length; i++) {
+    const cell = columnCells[i]
+
+    if (!cell.equals(1)) {
+      continue
+    }
+
+    if (numberOneIndex !== -1) {
+      return -1
+    }
+
+    numberOneIndex = i
+  }
+
+  return numberOneIndex
+}
+
+export const generateTableHeaders = (tableRows: TableRow[]) => {
+  return tableRows[0].cells.map((_, i) => getKey(tableRows[0], i))
+}
+
+const generateTableAndPivots = (tableRows: TableRow[]): TableType | null => {
+  const pivotColNumber = calculatePivotCol(tableRows[0])
+
+  if (!pivotColNumber) return null
+
+  const pivotRowNumber = calculatePivotRow(tableRows, pivotColNumber)
+
+  if (!pivotRowNumber) return null
+
+  const pivotElement = calculatePivotElement(
+    tableRows,
+    pivotColNumber,
+    pivotRowNumber,
+  )
+
+  return {
+    pivotColNumber,
+    pivotRowNumber,
+    pivotElement,
+    tableRows,
+  }
+}
+
+const calculateOthersLine = (
+  { tableRows, pivotColNumber, pivotRowNumber }: TableType,
+  newPivotRow: TableRow,
+): OtherLineType[] => {
+  const result: OtherLineType[] = []
+
+  tableRows.forEach((row, rowIndex) => {
+    // Não recalcula a NLP
+    if (rowIndex === pivotRowNumber) {
+      return
+    }
+
+    const coefficient = row.cells[pivotColNumber].neg()
+
+    const multipliedNewPivotRow: TableRow = {
+      ...newPivotRow,
+      cells: newPivotRow.cells.map(x => x.mul(coefficient)),
+    }
+
+    const resultRow: TableRow = {
+      ...newPivotRow,
+      cells: multipliedNewPivotRow.cells.map((c, i) => c.add(row.cells?.[i])),
+    }
+
+    result.push({
+      rowNumber: rowIndex,
+      newPivotRow,
+      multipliedNewPivotRow,
+      originalRow: row,
+      resultRow,
+      coefficient: coefficient,
+    })
+  })
+
+  return result
+}
+
+const calculatePivotCol = (firstLine: TableRow) => {
+  let max = F(0)
+  let index = 0
+  let assign = false
+
+  firstLine.cells.forEach((x, i) => {
+    if (x.lt(max)) {
+      max = x
+      index = i
+      assign = true
+    }
+  })
+
+  return assign ? index : null
+}
+
+const calculatePivotRow = (tableRows: TableRow[], pivotColNumber: number) => {
+  let min = F(Number.MAX_SAFE_INTEGER)
+  let index = 0
+  let assign = false
+
+  tableRows.forEach((row, rowIndex) => {
+    // Pula a função objetivo
+    if (rowIndex === 0) {
+      return
+    }
+
+    const coefficient = row.cells?.[pivotColNumber]
+
+    if (coefficient.equals(0)) {
+      return
+    }
+
+    const result = row.cells?.[row.cells.length - 1]?.div(coefficient)
+
+    if (min.gt(result)) {
+      min = result
+      assign = true
+      index = rowIndex
+    }
+  })
+
+  return assign ? index : null
+}
+
+const calculatePivotElement = (
+  tableRows: TableRow[],
+  pivotColNumber: number,
+  pivotRowNumber: number,
+) => {
+  const Table2D = tableRows.map(r => r.cells)
+
+  return Table2D[pivotRowNumber][pivotColNumber]
+}
+
+const calculateNlp = ({
+  tableRows,
+  pivotRowNumber,
+  pivotElement,
+}: TableType): NlpType => {
+  const pivotRow = tableRows?.[pivotRowNumber]
+
+  const newPivotRow = {
+    ...pivotRow,
+    cells: pivotRow.cells.map(c => c.div(pivotElement)),
+  }
+
+  return {
+    rowNumber: pivotRowNumber,
+    newPivotRow,
+    pivotRow,
+    pivotElementToUse: pivotElement,
+  }
+}
 
 export function NewSimplex() {
   const [history, setHistory] = useState<History[]>([])
@@ -144,34 +381,11 @@ export function NewSimplex() {
 
     return result
   }
-  // const extractObjectiveCOs = (exp: string) => {
-  //   const parts = exp.split(' ')
 
-  //   const result = []
-
-  //   for (const part of parts) {
-  //     const xIndex = part.indexOf('x')
-
-  //     if (xIndex === -1) {
-  //       continue
-  //     }
-
-  //     const co = part.slice(0, xIndex)
-
-  //     const value = co === '' ? 1 : Number(co)
-
-  //     result.push(value * -1)
-  //   }
-
-  //   return result
-  // }
-
-  const extractRestrictionCOs = (exp: string): TableLine => {
+  const extractRestrictionCOs = (exp: string): Fraction[] => {
     const parts = exp.split(' ')
 
-    const Xs: Fraction[] = []
-    const XFs: Fraction[] = []
-    let B = F(0)
+    const variablesCounter: Fraction[] = []
 
     for (const part of parts) {
       if (part === '<=' || part === '+' || part === '') continue
@@ -179,76 +393,50 @@ export function NewSimplex() {
       const xIndex = part.indexOf('x')
 
       if (xIndex === -1) {
-        B = F(part)
+        variablesCounter.push(F(part))
         continue
       }
 
       const co = part.slice(0, xIndex)
-      Xs.push(co === '' ? F(1) : F(co))
-      XFs.push(F(0))
+      variablesCounter.push(co === '' ? F(1) : F(co))
     }
 
-    return { Z: F(0), Xs, XFs, B }
+    return variablesCounter
   }
-  // const extractRestrictionCOs = (exp: string): TableLine => {
-  //   const parts = exp.split(' ')
-
-  //   const Xs = []
-  //   const XFs = []
-  //   let B = 0
-
-  //   for (const part of parts) {
-  //     if (part === '<=' || part === '+') {
-  //       // result.push(part)
-  //       continue
-  //     }
-
-  //     const xIndex = part.indexOf('x')
-
-  //     if (xIndex === -1) {
-  //       B = Number(part)
-  //       continue
-  //     }
-
-  //     const co = part.slice(0, xIndex)
-
-  //     Xs.push(co === '' ? 1 : Number(co))
-  //     XFs.push(0)
-  //   }
-
-  //   return {
-  //     Z: 0,
-  //     Xs,
-  //     XFs,
-  //     B,
-  //   }
-  // }
 
   const handleSubmit = () => {
-    // Fazer o parser da função objetivo
-    const coefficients = extractObjectiveCOs(objective)
-
-    const objectiveLine: TableLine = {
-      Z: new Fraction(1),
-      Xs: coefficients,
-      XFs: Array.from({ length: coefficients.length }, () => new Fraction(0)),
-      B: new Fraction(0),
-    }
-
-    const restrictionsLines: TableLine[] = restrictions.map(
+    const restrictionRows: TableRow[] = restrictions.map(
       (restriction, index) => {
-        const line = extractRestrictionCOs(restriction)
+        const coefficients = extractRestrictionCOs(restriction)
+
+        const b = coefficients.pop() as Fraction
+
+        const xs = coefficients
+
+        const xfs = restrictions.map((_, i) => (i === index ? F(1) : F(0)))
 
         return {
-          ...line,
-          XFs: line.XFs.map((_, i) =>
-            i === index ? new Fraction(1) : new Fraction(0),
-          ),
+          v: xs.length,
+          r: restrictions.length,
+          cells: [F(0), ...xs, ...xfs, b],
         }
       },
     )
 
-    const firstTableRows = [objectiveLine, ...restrictionsLines]
+    const coefficients = extractObjectiveCOs(objective)
+
+    const objectiveRow: TableRow = {
+      v: coefficients.length,
+      r: restrictions.length,
+      cells: [
+        F(1),
+        ...coefficients,
+        ...Array.from({ length: restrictions.length }, () => F(0)),
+        F(0),
+      ],
+    }
+
+    const firstTableRows = [objectiveRow, ...restrictionRows]
 
     const firstTableData = generateTableAndPivots(firstTableRows)
 
@@ -262,23 +450,13 @@ export function NewSimplex() {
     history.push({ state: firstTableData, type: HistoryType.Table })
 
     let tableData: TableType | null = firstTableData
-    // let tableRows: TableLine[] = []
-
-    // setHistory(prev => [
-    //   ...prev,
-    //   { state: firstTableData, type: HistoryType.Table },
-    // ])
 
     while (true) {
-      const nlp = calculateNlp(
-        tableData.tableRows[tableData.pivotRowNumber],
-        tableData.pivotElement,
-        tableData.pivotRowNumber,
-      )
+      const nlp = calculateNlp(tableData)
 
       history.push({ state: nlp, type: HistoryType.Nlp })
 
-      const otherLines = calculateOthersLine(nlp.newPivotRow, tableData)
+      const otherLines = calculateOthersLine(tableData, nlp.newPivotRow)
 
       // biome-ignore lint/complexity/noForEach: <explanation>
       otherLines.forEach(otherLine => {
@@ -299,13 +477,8 @@ export function NewSimplex() {
       if (result) {
         history.push({
           state: {
-            headers: [
-              'Z',
-              ...tableRowsSorted[0].Xs.map((_, i) => `X${i + 1}`),
-              ...tableRowsSorted[0].XFs.map((_, i) => `XF${i + 1}`),
-              'B',
-            ],
-            table: tableRowsSorted.map(r => [r.Z, ...r.Xs, ...r.XFs, r.B]),
+            headers: generateTableHeaders(tableRowsSorted),
+            table: tableRowsSorted.map(r => r.cells),
           },
           type: HistoryType.FinalTable,
         })
@@ -324,286 +497,6 @@ export function NewSimplex() {
     }
 
     setHistory(history)
-  }
-
-  const finalizeSimplex = (tableRows: TableLine[]) => {
-    const objectiveLine = tableRows[0]
-
-    if (
-      objectiveLine.Z.compare(0) >= 0 &&
-      objectiveLine.Xs.every(x => x.compare(0) >= 0) &&
-      objectiveLine.XFs.every(x => x.compare(0) >= 0) &&
-      objectiveLine.B.compare(0) >= 0
-    ) {
-      const map: Record<string, Fraction[]> = {}
-
-      for (const row of tableRows) {
-        row.Xs.forEach((x, index) => {
-          const key = `X${index + 1}`
-          map[key] = map[key] ?? []
-          map[key].push(x)
-        })
-        row.XFs.forEach((x, index) => {
-          const key = `XF${index + 1}`
-          map[key] = map[key] ?? []
-          map[key].push(x)
-        })
-      }
-
-      const variables: Record<string, number> = {}
-
-      for (const key in map) {
-        const values = map[key]
-        const sum = values.reduce((acc, v) => acc.add(v), new Fraction(0))
-
-        variables[key] = sum.equals(1)
-          ? tableRows[values.findIndex(x => x.equals(1))].B.valueOf()
-          : 0
-      }
-
-      return {
-        maxLucro: objectiveLine.B.valueOf(),
-        ...variables,
-      }
-    }
-  }
-
-  // const finalizeSimplex = (tableRows: TableLine[]) => {
-  //   const objectiveLine = tableRows[0]
-
-  //   if (
-  //     objectiveLine.Z >= 0 &&
-  //     objectiveLine.Xs.every(x => x >= 0) &&
-  //     objectiveLine.XFs.every(xf => xf >= 0) &&
-  //     objectiveLine.B >= 0
-  //   ) {
-  //     const map: Record<string, number[]> = {}
-
-  //     for (const row of tableRows) {
-  //       row.Xs.forEach((x, index) => {
-  //         const key = `X${index + 1}`
-
-  //         if (!map[key]) {
-  //           map[key] = []
-  //         }
-
-  //         map[key].push(x)
-  //       })
-
-  //       row.XFs.forEach((xf, index) => {
-  //         const key = `XF${index + 1}`
-
-  //         if (!map[key]) {
-  //           map[key] = []
-  //         }
-
-  //         map[key].push(xf)
-  //       })
-  //     }
-
-  //     const variables: Record<string, number> = {}
-
-  //     for (const key in map) {
-  //       const value = map[key]
-
-  //       variables[key] =
-  //         value.reduce((acc, v) => acc + v) === 1
-  //           ? tableRows[value.indexOf(1)].B
-  //           : 0
-  //     }
-  //     return {
-  //       maxLucro: objectiveLine.B,
-  //       ...variables,
-  //     }
-  //   }
-  // }
-
-  const generateTableAndPivots = (tableRows: TableLine[]): TableType | null => {
-    const pivotColNumber = calculatePivotCol(tableRows[0])
-
-    if (!pivotColNumber) return null
-
-    const pivotRowNumber = calculatePivotRow(tableRows, pivotColNumber)
-
-    if (!pivotRowNumber) return null
-
-    const pivotElement = calculatePivotElement(
-      tableRows,
-      pivotColNumber,
-      pivotRowNumber,
-    )
-
-    return {
-      pivotColNumber,
-      pivotRowNumber,
-      pivotElement,
-      tableRows,
-    }
-  }
-
-  const calculateOthersLine = (
-    newPivotRow: TableLine,
-    tableData: TableType,
-  ): OtherLineType[] => {
-    const result: OtherLineType[] = []
-
-    tableData.tableRows.forEach((row, rowIndex) => {
-      if (rowIndex === tableData.pivotRowNumber) return
-
-      const co = row.Xs[tableData.pivotColNumber - 1].neg()
-
-      const multipliedNewPivotRow: TableLine = {
-        Z: newPivotRow.Z.mul(co),
-        Xs: newPivotRow.Xs.map(x => x.mul(co)),
-        XFs: newPivotRow.XFs.map(x => x.mul(co)),
-        B: newPivotRow.B.mul(co),
-      }
-
-      const resultRow: TableLine = {
-        Z: multipliedNewPivotRow.Z.add(row.Z),
-        Xs: multipliedNewPivotRow.Xs.map((x, i) => x.add(row.Xs[i])),
-        XFs: multipliedNewPivotRow.XFs.map((x, i) => x.add(row.XFs[i])),
-        B: multipliedNewPivotRow.B.add(row.B),
-      }
-
-      result.push({
-        rowNumber: rowIndex,
-        newPivotRow,
-        multipliedNewPivotRow,
-        originalRow: row,
-        resultRow,
-        coefficient: co,
-      })
-    })
-
-    return result
-  }
-  // const calculateOthersLine = (
-  //   newPivotRow: TableLine,
-  //   tableData: TableType,
-  // ): OtherLineType[] => {
-  //   const result: OtherLineType[] = []
-
-  //   tableData.tableRows.forEach((row, rowIndex) => {
-  //     // Se for a NLP retorna
-  //     if (rowIndex === tableData.pivotRowNumber) {
-  //       return
-  //     }
-
-  //     const co = row.Xs[tableData.pivotColNumber - 1] * -1
-
-  //     const multipliedNewPivotRow = {
-  //       Z: newPivotRow.Z * co,
-  //       Xs: newPivotRow.Xs.map(x => x * co),
-  //       XFs: newPivotRow.XFs.map(x => x * co),
-  //       B: newPivotRow.B * co,
-  //     }
-
-  //     const resultRow = {
-  //       Z: multipliedNewPivotRow.Z + row.Z,
-  //       Xs: multipliedNewPivotRow.Xs.map((x, i) => x + row.Xs[i]),
-  //       XFs: multipliedNewPivotRow.XFs.map((xf, i) => xf + row.XFs[i]),
-  //       B: multipliedNewPivotRow.B + row.B,
-  //     }
-
-  //     const otherLine: OtherLineType = {
-  //       rowNumber: rowIndex,
-  //       newPivotRow,
-  //       multipliedNewPivotRow,
-  //       originalRow: row,
-  //       resultRow,
-  //       coefficient: co,
-  //     }
-
-  //     // TODO: Verificar mais algumas regras de simplex para ter certeza sobre o calculo.
-  //     // TODO: Criar um novo tipo chamado tabela final
-  //     // TODO: Criar apresentação de solução com prova real
-  //     // TODO: Componentizar e implementar o loop de soluções.
-
-  //     result.push(otherLine)
-  //   })
-
-  //   return result
-  // }
-
-  const calculatePivotCol = (firstLine: TableLine) => {
-    let max = F(0)
-    let index = 0
-    let assign = false
-
-    firstLine.Xs.forEach((x, i) => {
-      console.log({
-        max: max.valueOf(),
-        x: x.valueOf(),
-        i,
-        assign,
-        compare: x.compare(max),
-      })
-      if (x.compare(max) === -1) {
-        max = x
-        assign = true
-        index = i + 1
-      }
-    })
-
-    return assign ? index : null
-  }
-
-  const calculatePivotRow = (
-    tableRows: TableLine[],
-    pivotColNumber: number,
-  ) => {
-    let min = F(Number.MAX_SAFE_INTEGER)
-    let index = 0
-    let assign = false
-
-    tableRows.forEach((row, rowIndex) => {
-      if (rowIndex === 0) {
-        return
-      }
-
-      const co = row.Xs?.[pivotColNumber - 1]
-
-      const value = row.B.div(co)
-
-      if (min.compare(value) === 1) {
-        min = value
-        assign = true
-        index = rowIndex
-      }
-    })
-
-    return assign ? index : null
-  }
-
-  const calculatePivotElement = (
-    tableRows: TableLine[],
-    pivotColNumber: number,
-    pivotRowNumber: number,
-  ) => {
-    const Table2D = tableRows.map(r => [r.Z, ...r.Xs, ...r.XFs, r.B])
-
-    return Table2D[pivotRowNumber][pivotColNumber]
-  }
-
-  const calculateNlp = (
-    pivotTableLine: TableLine,
-    pivotElement: Fraction,
-    pivotRowNumber: number,
-  ): NlpType => {
-    const newPivotRow: TableLine = {
-      Z: pivotTableLine.Z.div(pivotElement),
-      Xs: pivotTableLine.Xs.map(x => x.div(pivotElement)),
-      XFs: pivotTableLine.XFs.map(x => x.div(pivotElement)),
-      B: pivotTableLine.B.div(pivotElement),
-    }
-
-    return {
-      rowNumber: pivotRowNumber,
-      newPivotRow,
-      pivotRow: pivotTableLine,
-      pivotElementToUse: pivotElement,
-    }
   }
 
   return (

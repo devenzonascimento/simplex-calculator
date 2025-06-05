@@ -6,6 +6,6 @@ type SolutionProps = {
 
 export function Solution({ data }: SolutionProps) {
     return (
-        <div>{JSON.stringify(data)}</div>
+        <div>Solução</div>
     )
 }
