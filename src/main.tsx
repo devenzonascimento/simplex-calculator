@@ -1,4 +1,4 @@
-import { StrictMode, useState } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 
@@ -375,18 +375,37 @@ const calculateNlp = ({
   }
 }
 
+const examples = [
+  {
+    title: 'Clean',
+    objective: '',
+    restrictions: [''],
+  },
+  {
+    title: 'Ex1',
+    objective: '5x1 + 2x2',
+    restrictions: ['10x1 + 12x2 <= 60', '2x1 + x2 <= 6'],
+  },
+  {
+    title: 'Ex2',
+    objective: '2x1 + 3x2 + 4x3',
+    restrictions: [
+      'x1 + x2 + x3 <= 100',
+      '2x1 + x2 + 0x3 <= 210',
+      'x1 + 0x2 + 0x3 <= 80',
+    ],
+  },
+  {
+    title: 'Ex3',
+    objective: '10x1 + 12x2',
+    restrictions: ['x1 + x2 <= 100', 'x1 + 3x2 <= 270'],
+  },
+]
+
 export function NewSimplex() {
   const [history, setHistory] = useState<History[]>([])
-  // const [objective, setObjective] = useState('5x1 + 2x2')
-  // const [restrictions, setRestrictions] = useState<string[]>([
-  //   '10x1 + 12x2 <= 60',
-  //   '2x1 + x2 <= 6',
-  // ])
-  const [objective, setObjective] = useState('10x1 + 12x2')
-  const [restrictions, setRestrictions] = useState<string[]>([
-    'x1 + x2 <= 100',
-    'x1 + 3x2 <= 270',
-  ])
+  const [objective, setObjective] = useState('')
+  const [restrictions, setRestrictions] = useState<string[]>([''])
 
   const handleRestrictionChange = (index: number, restriction: string) => {
     setRestrictions(prev =>
@@ -518,8 +537,34 @@ export function NewSimplex() {
     setHistory(history)
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Limpar ao alterar
+  useEffect(() => {
+    setHistory([])
+  }, [objective, restrictions])
+
   return (
     <main className="h-dvh p-4 flex flex-col gap-3 overflow-auto">
+      <fieldset className="flex flex-col gap-1 bg-zinc-800 p-3 rounded-xl">
+        <label htmlFor="objective" className="text-sm">
+          Exemplos de exercícios de aula:
+        </label>
+        <div className="grid grid-cols-4 gap-1">
+          {examples.map(e => (
+            <button
+              key={e.objective}
+              type="button"
+              className="font-semibold py-1 px-2 border border-zinc-400 rounded-md"
+              onClick={() => {
+                setObjective(e.objective)
+                setRestrictions(e.restrictions)
+              }}
+            >
+              {e.title}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
       <fieldset className="flex flex-col gap-1 bg-zinc-800 p-3 rounded-xl">
         <label htmlFor="objective" className="text-sm">
           Função objetivo:
@@ -571,7 +616,8 @@ export function NewSimplex() {
 
       <button
         type="button"
-        className="mx-auto w-full font-semibold p-3 text-zinc-950 bg-white rounded-md"
+        disabled={!objective || !restrictions.some(r => !!r)}
+        className="mx-auto w-full font-semibold p-3 text-zinc-950 bg-white rounded-md disabled:opacity-50"
         onClick={handleSubmit}
       >
         Gerar tabela
