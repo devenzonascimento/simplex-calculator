@@ -99,6 +99,44 @@ export type History =
       type: HistoryType.Solution
     }
 
+export const extractObjectiveCOs = (exp: string): Fraction[] => {
+  const parts = exp.split(' ')
+  const result: Fraction[] = []
+
+  for (const part of parts) {
+    const xIndex = part.indexOf('x')
+    if (xIndex === -1) continue
+
+    const co = part.slice(0, xIndex)
+    const value = co === '' ? F(-1) : F(co).neg()
+    result.push(value)
+  }
+
+  return result
+}
+
+const extractRestrictionCOs = (exp: string): Fraction[] => {
+  const parts = exp.split(' ')
+
+  const variablesCounter: Fraction[] = []
+
+  for (const part of parts) {
+    if (part === '<=' || part === '+' || part === '') continue
+
+    const xIndex = part.indexOf('x')
+
+    if (xIndex === -1) {
+      variablesCounter.push(F(part))
+      continue
+    }
+
+    const co = part.slice(0, xIndex)
+    variablesCounter.push(co === '' ? F(1) : F(co))
+  }
+
+  return variablesCounter
+}
+
 const finalizeSimplex = (tableRows: TableRow[]) => {
   console.log(tableRows.map(r => r.cells.map(c => c.valueOf())))
   const objectiveRow = tableRows[0]
@@ -375,44 +413,6 @@ export function NewSimplex() {
     setRestrictions(prev => prev.filter((_, i) => i !== index))
   }
 
-  const extractObjectiveCOs = (exp: string): Fraction[] => {
-    const parts = exp.split(' ')
-    const result: Fraction[] = []
-
-    for (const part of parts) {
-      const xIndex = part.indexOf('x')
-      if (xIndex === -1) continue
-
-      const co = part.slice(0, xIndex)
-      const value = co === '' ? F(-1) : F(co).neg()
-      result.push(value)
-    }
-
-    return result
-  }
-
-  const extractRestrictionCOs = (exp: string): Fraction[] => {
-    const parts = exp.split(' ')
-
-    const variablesCounter: Fraction[] = []
-
-    for (const part of parts) {
-      if (part === '<=' || part === '+' || part === '') continue
-
-      const xIndex = part.indexOf('x')
-
-      if (xIndex === -1) {
-        variablesCounter.push(F(part))
-        continue
-      }
-
-      const co = part.slice(0, xIndex)
-      variablesCounter.push(co === '' ? F(1) : F(co))
-    }
-
-    return variablesCounter
-  }
-
   const handleSubmit = () => {
     const restrictionRows: TableRow[] = restrictions.map(
       (restriction, index) => {
@@ -496,7 +496,7 @@ export function NewSimplex() {
 
         history.push({
           state: {
-            objectiveFunction: objective,
+            objectiveFunction: `${objective.trim()} = z`,
             results: result,
           },
           type: HistoryType.Solution,
